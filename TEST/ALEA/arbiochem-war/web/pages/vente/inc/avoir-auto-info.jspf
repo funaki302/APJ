@@ -1,0 +1,64 @@
+<%-- Inclus statiquement par vente-fiche.jsp et vente-arbiochem-fiche.jsp : utilise la variable dp (vente.VenteLib).
+     Declare nePasAppliquerAvoir, utilise par le bouton Viser (id="btnViser") de la fiche. --%>
+<%
+    double avoirDisponibleClient = avoir.ImputationAvoirFC.getSoldeAvoirClient(dp.getIdClient(), null);
+    boolean nePasAppliquerAvoir = avoir.ImputationAvoirFC.estAvoirNonApplique(dp.getId(), null);
+    double pourcentageAvoirClient = avoir.ImputationAvoirFC.getPourcentageAvoirClient(dp.getIdClient(), null);
+    if (dp.getEtat() < ConstanteEtat.getEtatValider()) {
+        double avoirAImputer = avoir.ImputationAvoirFC.simulerImputation(dp.getIdClient(), dp.getMontantttc(), dp.getMontantreste(), null);
+        if (avoirDisponibleClient > 0) {
+%>
+<div class="alert alert-info" style="margin: 10px 0">
+    <b>Avoir disponible du client :</b> <%= Utilitaire.formaterAr(avoirDisponibleClient) %> Ar<br>
+    <% if (pourcentageAvoirClient < avoir.ImputationAvoirFC.POURCENTAGE_SANS_LIMITE) { %>
+    <b>Part payable par avoir :</b> <%= pourcentageAvoirClient %> % de la facture, soit au plus
+    <b><%= Utilitaire.formaterAr(avoir.ImputationAvoirFC.getPlafondAvoir(dp.getMontantttc(), pourcentageAvoirClient)) %> Ar</b>
+    (le reste se paie en cash ou autre moyen)<br>
+    <% } %>
+    <span id="avoirAppliqueInfo" style="<%= nePasAppliquerAvoir ? "display:none" : "" %>">
+        Au visa, <b><%= Utilitaire.formaterAr(avoirAImputer) %> Ar</b> seront d&eacute;duits automatiquement :
+        reste &agrave; payer estim&eacute; <b><%= Utilitaire.formaterAr(dp.getMontantreste() - avoirAImputer) %> Ar</b>,
+        avoir restant <b><%= Utilitaire.formaterAr(avoirDisponibleClient - avoirAImputer) %> Ar</b>.
+    </span>
+    <span id="avoirGardeInfo" style="<%= nePasAppliquerAvoir ? "" : "display:none" %>">
+        Au visa, <b>rien ne sera d&eacute;duit</b> : reste &agrave; payer <b><%= Utilitaire.formaterAr(dp.getMontantreste()) %> Ar</b>,
+        le client garde ses <b><%= Utilitaire.formaterAr(avoirDisponibleClient) %> Ar</b> d'avoir pour une autre facture.
+    </span>
+    <div class="checkbox" style="margin: 8px 0 0 0">
+        <label>
+            <input type="checkbox" id="nePasAppliquerAvoir" <%= nePasAppliquerAvoir ? "checked" : "" %> onchange="changerChoixAvoir(this.checked)">
+            <b>Ne pas appliquer l'avoir sur cette facture</b> (le client le garde pour plus tard)
+        </label>
+    </div>
+</div>
+<script>
+    function changerChoixAvoir(nePasAppliquer) {
+        document.getElementById('avoirAppliqueInfo').style.display = nePasAppliquer ? 'none' : '';
+        document.getElementById('avoirGardeInfo').style.display = nePasAppliquer ? '' : 'none';
+        var btn = document.getElementById('btnViser');
+        if (btn) btn.href = btn.href.replace(/nePasAppliquerAvoir=[01]/, 'nePasAppliquerAvoir=' + (nePasAppliquer ? '1' : '0'));
+    }
+</script>
+<%
+        }
+    } else {
+        double avoirImpute = avoir.ImputationAvoirFC.getMontantAvoirImpute(dp.getId(), null);
+        if (avoirImpute > 0 || avoirDisponibleClient > 0 || nePasAppliquerAvoir) {
+%>
+<div class="alert alert-success" style="margin: 10px 0">
+    <% if (nePasAppliquerAvoir) { %>
+    <b>Avoir non appliqu&eacute; au visa</b> (choix du client : avoir gard&eacute; pour une autre facture).<br>
+    <% } %>
+    <% if (avoirImpute > 0) { %>
+    <b>Avoir d&eacute;duit de cette facture :</b> <%= Utilitaire.formaterAr(avoirImpute) %> Ar (voir l'onglet &laquo; Liaison paiement(s) &raquo;)<br>
+    <% } %>
+    <% if (pourcentageAvoirClient < avoir.ImputationAvoirFC.POURCENTAGE_SANS_LIMITE) { %>
+    <b>Part payable par avoir :</b> <%= pourcentageAvoirClient %> % de la facture
+    (plafond <%= Utilitaire.formaterAr(avoir.ImputationAvoirFC.getPlafondAvoir(dp.getMontantttc(), pourcentageAvoirClient)) %> Ar)<br>
+    <% } %>
+    <b>Avoir restant du client pour les prochains achats :</b> <%= Utilitaire.formaterAr(avoirDisponibleClient) %> Ar
+</div>
+<%
+        }
+    }
+%>

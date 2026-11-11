@@ -1,18 +1,35 @@
-# Build and Release Folders
-bin-debug/
-bin-release/
-[Oo]bj/
-[Bb]in/
+# =====================================================================
+# Liste blanche : tout est ignore, sauf les dossiers envoyes sur GitHub
+#   arbiochem-ejb/src, arbiochem-war/src, arbiochem-war/web, data, instruction, TEST
+# =====================================================================
 
-# Other files and folders
-.settings/
+# 1. Tout ignorer a la racine...
+/*
 
-# Executables
-*.swf
-*.air
-*.ipa
-*.apk
+# 2. ...sauf ces dossiers et ce fichier
+!/.gitignore
+!/arbiochem-ejb/
+!/arbiochem-war/
+!/data/
+!/instruction/
+!/TEST/
 
-# Project files, i.e. `.project`, `.actionScriptProperties` and `.flexProperties`
-# should NOT be excluded as they contain compiler settings and other important
-# information for Eclipse / Flash Builder.
+# 3. Dans les modules, seulement les sources
+/arbiochem-ejb/*
+!/arbiochem-ejb/src/
+
+/arbiochem-war/*
+!/arbiochem-war/src/
+!/arbiochem-war/web/
+
+# Vraie base de l'entreprise (clients reels) : jamais sur GitHub.
+# Les scripts du cinema (data/cinema/) sont envoyes.
+/data/REAL DATA/
+
+# 4. Fichiers inutiles ou generes, ou qu'ils soient
+*.iml
+.DS_Store
+Thumbs.db
+*.class
+*.war
+*.log
