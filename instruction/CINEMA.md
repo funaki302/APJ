@@ -1,6 +1,6 @@
 # CINEMA : module de gestion d'un cinéma
 
-Dernière mise à jour : 11/11/2026 (étape 7)
+Dernière mise à jour : 11/11/2026 (étape 9 : module terminé)
 
 Plan de travail et décisions : `TEST/CINEMA/TO-DO-CINEMA-1.md`. Livraisons : `TEST/CINEMA/ETAPE-n/`.
 
@@ -50,6 +50,8 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 | `etape-5-diffusions.sql` | table `CIN_DIFFUSION`, vue `CIN_DIFFUSION_LIB`, menus Diffusions (saisie, liste, calendrier) |
 | `etape-6-reservations.sql` | tables `CIN_TICKET`, `CIN_TICKET_DETAIL`, vues `CIN_TICKET_LIB`, `CIN_TICKET_DETAIL_LIB`, `CIN_PLACE_DIFFUSION`, menus Réservations |
 | `etape-7-paiements.sql` | tables `CIN_MODE_CAISSE`, `CIN_PAIEMENT`, `CIN_PAIEMENT_DETAIL`, `CIN_FACTURE`, `CIN_FACTURE_DETAIL`, vues `*_LIB`, mode Mobile money `MPCINMOB`, menus Paiements / Factures / Caisses par mode |
+| `etape-8-clients-tableau.sql` | vue `CIN_CLIENT_LIB`, menus Clients et Tableau de bord |
+| `etape-9-reinitialisation.sql` | menu « Réinitialiser les données » (le traitement est dans `CinReinitialisation`) |
 | `donnees-demo.sql` | **données de démonstration** (après les étapes 0 à 7, rejouable) : acteurs, films, salles, achats, séances, clients `CLICINDEMO...`, tickets, un ticket payé avec sa facture |
 | `cinema-reset.sql` | supprime tous les objets `CIN_*` / `SEQ_CIN_*` / `GETSEQCIN*`, les menus `MENDYNCINEMA%`, la caisse `CAICINEMA` avec ses reports et mouvements, les mouvements de caisse `IDORIGINE LIKE 'CIN%'`, les clients `CLICIN%` et le mode `MPCINMOB`. Testé le 11/11/2026. |
 
@@ -65,8 +67,8 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 | 5 | Diffusions | fait (11/11/2026) |
 | 6 | Réservations | fait (11/11/2026) |
 | 7 | Paiement → facture + entrée de caisse | fait (11/11/2026) |
-| 8 | Consultation client, tableau de bord | à faire |
-| 9 | Recette finale | à faire |
+| 8 | Consultation client, tableau de bord | fait (11/11/2026) |
+| 9 | Recette finale, réinitialisation, livraison | fait (11/11/2026) |
 
 ## 5. Étape 0 : détail
 
@@ -235,6 +237,43 @@ Tests à faire dans WildFly (après `donnees-demo.sql`) :
 | Ticket expiré (séance « Rire en famille ») | pas de bouton Payer |
 | Configurations → Caisses par mode | changer la caisse du chèque, ou désactiver le virement → il n'est plus proposé au paiement |
 | Facture de démo `FCaaaa-D0001` | espèce 10 000 + Mobile money 20 000, places E1 et E2 |
+
+## 6 octies. Étape 8 : clients et tableau de bord
+
+| Élément | Classe Java | Pages |
+|---|---|---|
+| vue `CIN_CLIENT_LIB` (lecture seule) | `cinema.reservation.CinClient` (`getTickets`, `getPaiements`) | `cinema/client/client-{liste,fiche}.jsp` |
+| calculs du tableau de bord | `cinema.utils.CinTableauBord.calculer(debut, fin, c)` | `cinema/tableau/tableau-bord.jsp` |
+
+- **Clients** : uniquement les clients qui ont au moins un ticket. La création / modification d'un client reste dans les pages client existantes (lien « Fiche client complète »).
+- **Période** du tableau de bord (paramètres `debut`, `fin` au format AAAA-MM-JJ ; mois en cours par défaut) : recettes et places vendues = paiements de la période ; achats = achats visés de la période ; remplissage = séances programmées de la période. Réservations en attente et solde de la Caisse Cinéma = situation actuelle.
+- **Solde de la Caisse Cinéma** = somme (crédit − débit) des mouvements visés de la caisse `CAICINEMA`, depuis le début.
+- **Graphiques** : barres horizontales en HTML / CSS (pas de librairie) ; recettes par film = une seule mesure (une couleur, pas de légende) ; remplissage = payées (bleu) + réservées (orange) avec légende ; chaque graphique a un tableau de valeurs (« Voir le tableau ») et une infobulle au survol.
+
+Tests à faire dans WildFly (après `donnees-demo.sql`) :
+
+| Écran | À vérifier |
+|---|---|
+| Cinéma → Clients | 3 clients de démo ; Razafy Nirina : 2 tickets, 1 payé, 30 000 Ar ; clic sur l'ID → fiche |
+| Fiche client | ses réservations et ses paiements, liens vers ticket / paiement / facture |
+| Cinéma → Tableau de bord | recettes 30 000 Ar, places vendues 2, 3 réservations en attente (110 000 Ar), achats 4 300 000 Ar, solde Caisse Cinéma −4 290 000 Ar |
+| Tableau de bord, graphiques | « Nuit a Tana » 30 000 Ar ; remplissage de la séance de demain 18:00 (réservées en orange) ; « Voir le tableau » |
+| Payer un ticket, revenir au tableau de bord | recettes, places vendues et solde augmentent, réservations en attente diminuent |
+| Changer la période (ex. 2020) | chiffres à 0, messages « Aucun paiement / Aucune séance » |
+
+## 6 nonies. Étape 9 : réinitialisation, recette finale
+
+- **Réinitialiser les données** (menu Cinéma, page `cinema/parametre/reinitialisation.jsp` → `apres-reinitialisation.jsp` → `cinema.utils.CinReinitialisation.executer`) : efface tout sauf la configuration, dans l'ordre des clés étrangères, en SQL direct et dans **une seule transaction** (17 étapes, aperçu des quantités avant). Garde : `CIN_CINEMA`, `CIN_CLASSE_PLACE`, `CIN_CATEGORIE_FILM`, `CIN_PARAMETRE`, `CIN_MODE_CAISSE`, la caisse `CAICINEMA`, les menus. Puis remet à 1 la séquence des numéros de facture.
+- **Recharger la démonstration** : même page, option « Réinitialiser puis recharger la démonstration ». Le script lu est `arbiochem-war/web/WEB-INF/cinema/donnees-demo.sql`, exécuté par `cinema.utils.CinScriptSql` (lignes `--`, `SET`, `COMMIT` ignorées ; `;` en fin de ligne ; blocs PL/SQL terminés par `/`). **Ce fichier doit rester identique à `data/cinema/donnees-demo.sql`** (le war ne contient pas le dossier `data/`).
+- **Ce que le module ajoute dans des tables existantes** (rien n'est modifié ni supprimé dans l'existant) : `MENUDYNAMIQUE` (menus `MENDYNCINEMA...`), `USERMENU` (`UMCINEMA01`), `CAISSE` (`CAICINEMA`), `MODEPAIEMENT` (`MPCINMOB`), `CLIENT` (clients de démo `CLICIN...`), `MOUVEMENTCAISSE` et `REPORTCAISSE` (mouvements du cinéma, `IDORIGINE LIKE 'CIN%'` ou caisse `CAICINEMA`). `cinema-reset.sql` retire tout cela.
+- **Recette finale** : scénario complet achat → séance → réservation → paiement multi-mode → facture → caisse → tableau de bord, et cas limites, testés en Java (voir `TEST/CINEMA/README.md` pour le parcours dans l'application).
+
+## 6 decies. Limites connues et perspectives
+
+- Pas d'écriture comptable générale (journal, lettrage) pour les achats et les paiements : seulement des mouvements visés dans `MOUVEMENTCAISSE`.
+- Pas de modification d'un achat (annuler puis ressaisir avant le visa), pas d'annulation d'un paiement ni d'avoir sur un ticket payé.
+- Pas de marge de nettoyage entre deux séances, pas de tarif selon la séance (3D, soirée), pas d'espace client en ligne.
+- La vue `V_ETATCAISSE` de la base locale (solde des caisses de l'appli) ne compte que les mouvements rattachés à un report : le tableau de bord du cinéma calcule son propre solde.
 
 ## 7. Pièges APJ (à retenir pour les étapes suivantes)
 

@@ -227,18 +227,24 @@ Problèmes découverts et corrigés pendant l'étape :
 - **Sources Java en ASCII pur** : le projet compile en ISO-8859-1 (`build.xml`). Un caractère accentué ou spécial écrit en clair dans un `.java` est abîmé à la compilation (un montant « 20 000 » avec espace insécable était refusé ; l'alerte de la servlet photo aurait affiché des caractères cassés). Corrigé, et tous les `.java` du cinéma vérifiés : 0 caractère non-ASCII.
 - **Accents de la base** : l'appli enregistre les accents en entités HTML (`Cin&eacute;ma`). Ma fonction d'échappement `html()` les transformait en `&amp;eacute;` (affichage « Cin&eacute;ma » à l'écran) : corrigée dans les 8 pages concernées (elle garde les entités valides et neutralise le reste).
 
-### Étape 8 : Consultation client et suivi
+### Étape 8 : Consultation client et suivi — ✅ FAIT (11/11/2026)
 
-- [ ] Fiche client cinéma (`cinema/client/client-fiche.jsp`) : ses réservations et ses paiements (le client est la table `CLIENT` existante, les pages client existantes ne sont pas modifiées).
-- [ ] Tableau de bord cinéma : recettes par jour / film / salle, taux de remplissage par diffusion, achats vs recettes (solde de la caisse cinéma).
+- [x] `data/cinema/etape-8-clients-tableau.sql` : vue `CIN_CLIENT_LIB` (clients de la table `CLIENT` qui ont au moins un ticket : tickets, payés, en attente, places payées, montant payé, dernière réservation) + menus **Cinéma → Clients** et **Cinéma → Tableau de bord**. Joué sur la base locale.
+- [x] `cinema/client/client-liste.jsp` (tableau APJ standard, filtres nom / téléphone / montant, total) et `client-fiche.jsp` : totaux du client, **ses réservations** (film, salle, séance, places, montant, statut) et **ses paiements** (date, film, modes, montant, facture), liens vers chaque fiche, « Nouvelle réservation », « Fiche client complète » (page client existante, non modifiée).
+- [x] `cinema/tableau/tableau-bord.jsp` : filtre de période (mois en cours par défaut) ; chiffres clés : **recettes**, places vendues, réservations en attente (et montant à encaisser), **achats visés**, **résultat** (recettes − achats), **solde de la Caisse Cinéma** (calculé sur `MOUVEMENTCAISSE` : la vue `V_ETATCAISSE` de la base n'est pas fiable) ; graphique **recettes par film** ; graphique **remplissage des séances** (payées + réservées sur les places en service) ; chaque graphique a son tableau de valeurs et une infobulle au survol ; **derniers mouvements de caisse** du cinéma (liens vers les mouvements).
+- [x] Calculs dans `cinema.utils.CinTableauBord` (requêtes préparées), lectures client dans `cinema.reservation.CinClient`.
+- [x] Tests faits par moi : compilation (41 classes, 55 JSP), rendu réel du tableau de bord depuis la base, 20 tests Java (chiffres exacts sur la démo, période sans activité, un nouveau paiement fait bouger recettes / places / attente / solde), tous les tests des étapes 1 à 8 (155) sans laisser de données, chaîne complète rejouée depuis zéro (reset → étapes 0 à 8 → démo).
+- [ ] **À tester par toi dans WildFly** (tableau en bas de la section « Étape 8 » de `instruction/CINEMA.md`).
 
-### Étape 9 : Recette finale
+### Étape 9 : Recette finale + réinitialisation + livraison — ✅ FAIT (11/11/2026)
 
-- [ ] Scénario complet : achat d'un film → diffusion → réservation de 3 places (classes différentes) → paiement espèce + mobile money → facture générée → 1 débit + 2 crédits dans `MOUVEMENTCAISSE`.
-- [ ] Cas limites : place déjà prise, chevauchement de séances, paiement incomplet refusé, ticket expiré non payable, annulation.
-- [ ] Vérifier que le reste de l'appli n'est pas impacté (Vente, Caisse, Ferme…).
-- [ ] `instruction/CINEMA.md` à jour, `cinema-reset.sql` testé.
-- [ ] **Livraison unique** dans `TEST/CINEMA/` : tous les fichiers du module (Java, JSP, scripts `data/cinema/` dans l'ordre, `instruction/CINEMA.md`) + README global (installation + tests de chaque étape).
+- [x] **Menu « Réinitialiser les données »** (`data/cinema/etape-9-reinitialisation.sql`, page `cinema/parametre/reinitialisation.jsp`) : aperçu du nombre de lignes, confirmation en tapant REINITIALISER. Efface **tout sauf la configuration** (tickets, paiements, factures, achats, séances, salles et places, films et photos, acteurs, clients `CLICIN...`, mouvements et reports de la Caisse Cinéma) ; garde le cinéma, les classes, les catégories, les paramètres, les caisses par mode, la Caisse Cinéma et tout le reste de l'appli. Option **« Réinitialiser puis recharger la démonstration »** (lit `WEB-INF/cinema/donnees-demo.sql`). Une seule transaction : si une étape échoue, rien n'est effacé. Le compteur des factures repart à `FCaaaa-00001`.
+- [x] Scénario complet testé : achat d'un film visé (débit Caisse Cinéma, PA du film mis à jour) → séance → réservation de 3 places Standard + Moyen + Premium (45 000 Ar) → paiement espèce 25 000 + Mobile money 20 000 → facture de 3 lignes → 1 débit + 2 crédits dans `MOUVEMENTCAISSE` → tableau de bord à jour.
+- [x] Cas limites testés : place déjà prise, séance qui chevauche, paiement incomplet refusé, ticket expiré non payable, annulation, deux caisses sur la même place, réinitialisation puis rechargement de la démo.
+- [x] Reste de l'appli non impacté : aucun fichier existant modifié hors du module (seul `dateBuild.txt`, réécrit par le build), aucun objet de la base modifié hors `CIN_*` ; les autres clients, caisses et mouvements de caisse restent identiques après une réinitialisation.
+- [x] `instruction/CINEMA.md` à jour, `cinema-reset.sql` testé, chaîne complète rejouée depuis zéro (reset → étapes 0 à 9 → démo), 180 tests Java des étapes 1 à 9 sans laisser de données.
+- [x] **Livraison unique** dans `TEST/CINEMA/` : tous les fichiers du module (Java, servlet, JSP, scripts `data/cinema/`, démo `WEB-INF/cinema/`, `instruction/CINEMA.md`) + `README.md` global.
+- [ ] **À tester par toi dans WildFly** : `TEST/CINEMA/README.md` (installation complète et parcours de test).
 
 ---
 

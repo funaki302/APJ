@@ -1,6 +1,6 @@
 -- =====================================================================
 -- CINEMA - Donnees de demonstration (pour tester les ecrans des etapes 1 a 7)
--- A executer APRES les scripts etape-0 a etape-7. Peut etre rejoue : il efface d'abord l'ancienne demo.
+-- A executer APRES les scripts etape-0 a etape-7 (ou etape-8). Peut etre rejoue : il efface d'abord l'ancienne demo.
 -- Tous les identifiants contiennent DEMO (clients : CLICINDEMO...). Les dates sont relatives au jour d'execution.
 --
 -- Contenu :

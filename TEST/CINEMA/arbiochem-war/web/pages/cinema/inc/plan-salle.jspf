@@ -1,0 +1,102 @@
+<%--
+    Plan de salle (fiche salle, modification du plan, fiche diffusion, reservation, fiche ticket).
+    La page qui inclut ce fragment doit declarer AVANT l'include :
+        cinema.salle.CinPlaceLib[] planPlaces;   places triees par rangee puis colonne
+                                                  (des cinema.reservation.CinPlaceDiffusion pour une seance : statut de chaque place)
+        int planColonnes;                         nombre de places par rangee
+        cinema.salle.CinClassePlace[] planClasses; classes actives (legende)
+        boolean planEditable;                     true : places / rangees / colonnes cliquables (salle-plan.jsp, reservation-saisie.jsp)
+    Optionnel : request.setAttribute("cinTicketCourant", idTicket) met en valeur les places de ce ticket.
+    Chaque place : <div class="cin-place" data-id data-classe data-etat [data-statut]>, couleur de sa classe,
+    hachuree si hors service, barree (X) si reservee ou payee pour la seance.
+--%>
+<style>
+    .cin-plan { overflow-x: auto; padding: 12px 0; }
+    .cin-ecran { margin: 0 auto 18px; width: 70%; text-align: center; font-size: 12px; letter-spacing: 4px; color: #666;
+                 border-top: 4px solid #9B9EA0; border-radius: 50% 50% 0 0 / 12px 12px 0 0; padding-top: 4px; }
+    .cin-grille { display: grid; gap: 6px; justify-content: center; align-items: center; }
+    .cin-place { position: relative; width: 34px; height: 30px; border-radius: 6px 6px 3px 3px; border: 1px solid rgba(0,0,0,.25);
+                 font-size: 10px; line-height: 28px; text-align: center; color: #1C1F21; user-select: none; }
+    .cin-place.cin-hs { background: repeating-linear-gradient(45deg, #ddd, #ddd 4px, #bbb 4px, #bbb 8px) !important; color: #777; }
+    .cin-place.cin-modifiee { outline: 2px solid #2B68D9; outline-offset: 1px; }
+    .cin-place.cin-prise { opacity: .45; }
+    .cin-place.cin-prise::after { content: "\2715"; position: absolute; inset: 0; font-size: 20px; line-height: 28px; color: #1C1F21; font-weight: 700; }
+    .cin-place.cin-payee { opacity: .3; }
+    .cin-place.cin-mien { opacity: 1; outline: 3px solid #1C1F21; outline-offset: 1px; }
+    .cin-place.cin-mien::after { content: none; }
+    .cin-place.cin-choisie { outline: 3px solid #2B68D9; outline-offset: 1px; box-shadow: 0 0 0 5px rgba(43,104,217,.25); }
+    .cin-place.cin-choisie::after { content: "\2713"; position: absolute; top: -9px; right: -7px; width: 16px; height: 16px; border-radius: 50%;
+                                     background: #2B68D9; color: #fff; font-size: 11px; line-height: 16px; }
+    .cin-entete { font-size: 11px; font-weight: 600; color: #666; text-align: center; user-select: none; }
+    .cin-editable .cin-place, .cin-editable .cin-entete { cursor: pointer; }
+    .cin-editable .cin-place.cin-prise, .cin-editable .cin-place.cin-hs.cin-seance { cursor: not-allowed; }
+    .cin-editable .cin-entete:hover { color: #2B68D9; }
+    .cin-legende { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-top: 14px; font-size: 13px; }
+    .cin-legende span.cin-pastille { display: inline-block; width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(0,0,0,.25);
+                                     vertical-align: middle; margin-right: 6px; }
+</style>
+<%
+    {
+        java.text.DecimalFormat cinFormatPrix = new java.text.DecimalFormat("#,##0");
+        java.util.Map<String, Integer> cinNbParClasse = new java.util.HashMap<String, Integer>();
+        int cinNbHs = 0, cinNbReservees = 0, cinNbPayees = 0;
+        boolean cinSeance = planPlaces.length > 0 && planPlaces[0] instanceof cinema.reservation.CinPlaceDiffusion;
+        Object cinTicketCourant = request.getAttribute("cinTicketCourant");
+        for (cinema.salle.CinPlaceLib p : planPlaces) {
+            if (p.getEtat() == cinema.salle.CinPlace.HORS_SERVICE) cinNbHs++;
+            else cinNbParClasse.put(p.getIdclasse(), (cinNbParClasse.containsKey(p.getIdclasse()) ? cinNbParClasse.get(p.getIdclasse()) : 0) + 1);
+            if (cinSeance) {
+                String st = ((cinema.reservation.CinPlaceDiffusion) p).getStatut();
+                if (cinema.reservation.CinPlaceDiffusion.RESERVEE.equals(st)) cinNbReservees++;
+                if (cinema.reservation.CinPlaceDiffusion.PAYEE.equals(st)) cinNbPayees++;
+            }
+        }
+%>
+<div class="cin-plan <%= planEditable ? "cin-editable" : "" %>" id="cinPlan">
+    <div class="cin-ecran">&Eacute;CRAN</div>
+    <div class="cin-grille" style="grid-template-columns: 24px repeat(<%= planColonnes %>, 34px);">
+        <div></div>
+        <% for (int col = 1; col <= planColonnes; col++) { %>
+        <div class="cin-entete" data-colonne="<%= col %>"><%= col %></div>
+        <% } %>
+        <%
+            int cinRangeeCourante = 0;
+            for (cinema.salle.CinPlaceLib p : planPlaces) {
+                if (p.getRangee() != cinRangeeCourante) {
+                    cinRangeeCourante = p.getRangee();
+        %>
+        <div class="cin-entete" data-rangee="<%= cinRangeeCourante %>"><%= (char) ('A' + cinRangeeCourante - 1) %></div>
+        <%      }
+                boolean cinHs = p.getEtat() == cinema.salle.CinPlace.HORS_SERVICE;
+                String cinStatut = "", cinClasses = cinHs ? "cin-hs" : "", cinTitre = cinHs ? "Hors service" : p.getIdclasselib() + " - " + cinFormatPrix.format(p.getPrix()) + " Ar";
+                if (cinSeance) {
+                    cinema.reservation.CinPlaceDiffusion pd = (cinema.reservation.CinPlaceDiffusion) p;
+                    cinStatut = pd.getStatut();
+                    if (cinHs) cinClasses += " cin-seance";
+                    if (cinema.reservation.CinPlaceDiffusion.RESERVEE.equals(cinStatut)) { cinClasses += " cin-prise"; cinTitre += " - réservée"; }
+                    if (cinema.reservation.CinPlaceDiffusion.PAYEE.equals(cinStatut)) { cinClasses += " cin-prise cin-payee"; cinTitre += " - payée"; }
+                    if (cinTicketCourant != null && cinTicketCourant.equals(pd.getIdticket())) cinClasses += " cin-mien";
+                }
+        %>
+        <div class="cin-place <%= cinClasses %>" style="background: <%= p.getCouleur() %>;"
+             data-id="<%= p.getId() %>" data-classe="<%= p.getIdclasse() %>" data-etat="<%= p.getEtat() %>" data-statut="<%= cinStatut %>"
+             data-rangee="<%= p.getRangee() %>" data-colonne="<%= p.getColonne() %>" data-prix="<%= (long) p.getPrix() %>" data-numero="<%= p.getNumero() %>"
+             title="<%= p.getNumero() %> - <%= cinTitre %>"><%= p.getNumero() %></div>
+        <% } %>
+    </div>
+    <div class="cin-legende">
+        <% for (cinema.salle.CinClassePlace cl : planClasses) {
+               int cinNb = cinNbParClasse.containsKey(cl.getId()) ? cinNbParClasse.get(cl.getId()) : 0; %>
+        <div><span class="cin-pastille" style="background: <%= cl.getCouleur() %>;"></span><%= cl.getVal() %> &mdash;
+            <%= cinFormatPrix.format(cl.getPrix()) %> Ar (<%= cinNb %> places)</div>
+        <% } %>
+        <div><span class="cin-pastille cin-place cin-hs" style="width: 16px; height: 16px;"></span>Hors service (<%= cinNbHs %>)</div>
+        <% if (cinSeance) { %>
+        <div><span class="cin-pastille" style="text-align: center; line-height: 14px; font-weight: 700;">&#10005;</span>R&eacute;serv&eacute;e (<%= cinNbReservees %>)</div>
+        <div><span class="cin-pastille" style="text-align: center; line-height: 14px; font-weight: 700; opacity: .4;">&#10005;</span>Pay&eacute;e (<%= cinNbPayees %>)</div>
+        <% } %>
+    </div>
+</div>
+<%
+    }
+%>
