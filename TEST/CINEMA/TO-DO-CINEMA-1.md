@@ -75,7 +75,7 @@ Conventions APJ reprises de l'existant : `ID VARCHAR2`, `ETAT NUMBER` (1 = cré�
 | `CIN_PLACE` | ID, IDSALLE, IDCLASSE, NUMERO (A1, A2…), RANGEE, COLONNE, ETAT (1 en service / 0 hors service) | `ClassMAPTable` (fait, étape 2) | Générées automatiquement à la création de la salle, dans la classe active la moins chère. **Pas de colonne PRIX** : le prix est celui de la classe (vue `CIN_PLACE_LIB`), conformément à la décision « prix selon la classe seule ». |
 | `CIN_CATEGORIE_FILM` | ID, VAL, DESCE, DATE_CREATION, ETAT | `TypeObjet` | Action, comédie… |
 | `CIN_ACTEUR` | ID, NOM, NOM_ACTEUR (nom de scène), DATE_NAISSANCE | `ClassMAPTable` | Un acteur principal par film. |
-| `CIN_FILM` | ID, TITRE, IDCATEGORIE, IDACTEUR, DUREE (minutes), PA, PHOTO, DESCRIPTION, DATE_CREATION, ETAT | `ClassEtat` | `PA` = prix d'achat. `PHOTO` = chemin du fichier uploadé. |
+| `CIN_FILM` + `CIN_FILM_PHOTO` | ID, TITRE, IDCATEGORIE, IDACTEUR, DUREE (minutes), PA, DESCRIPTION, DATE_CREATION, ETAT — photo : IDFILM, CONTENU (BLOB), TYPE_MIME, NOM_FICHIER, TAILLE, DATE_MAJ | `ClassMAPTable` (fait, étape 3) | `PA` = prix d'achat. **Photo stockée en base** (décision du 11/11/2026), affichée par la servlet `/cinema/film-photo`. |
 | `CIN_ACHAT` + `CIN_ACHAT_FILLE` | mère : ID, DATY, FOURNISSEUR, IDCAISSE, MONTANT, ETAT — fille : ID, IDACHAT, TYPE (film / matériel), IDFILM, DESIGNATION, QTE, PU | `ClassMere` / `ClassFille` | **Décidé.** Le visa génère le débit de caisse. |
 | `CIN_DIFFUSION` | ID, IDFILM, IDSALLE, DATY, HEURE (HH:MI), DATE_CREATION, ETAT | `ClassEtat` | `HEURE` en texte comme l'existant (`MOUVEMENTCAISSE.HEURE`, `VENTE.HEURESAISIE`). |
 | `CIN_TICKET` (réservation) | ID, IDCLIENT, IDDIFFUSION, DATY_RESERVATION, MONTANT, ETAT | `ClassMere` (fille = ticket_detail) | La salle se lit par la diffusion (vue), inutile de la stocker deux fois. |
@@ -143,13 +143,20 @@ Remarques techniques découvertes pendant l'étape :
 - [ ] **À tester par toi dans WildFly** (voir `TEST/CINEMA/ETAPE-2/README.md`).
 - [ ] À faire aux étapes 5 / 6 : interdire la suppression d'une salle qui a des diffusions, et la mise hors service d'une place déjà réservée pour une séance à venir.
 
-### Étape 3 : Films
+### Étape 3 : Films — ✅ FAIT (11/11/2026)
 
-- [ ] Table `CIN_FILM` + vue `CIN_FILM_LIB`.
-- [ ] `film-saisie.jsp` (maquette) : titre, catégorie (liste), acteur (choix/autocomplete), durée (hh:mm), photo (upload, réutiliser `uploadbean` / `filemanager` existant), PA.
-- [ ] `film-liste.jsp` : vignette photo, titre (acteur), durée, catégorie, bouton Détail, filtres titre / acteur / durée / catégorie, pagination.
-- [ ] `film-fiche.jsp` : photo en grand, état, titre, catégorie, acteur, durée, PA, bouton Modifier.
-- [ ] Contrôles : durée > 0, PA ≥ 0.
+- [x] `data/cinema/etape-3-films.sql` : tables `CIN_FILM`, `CIN_FILM_PHOTO` (photo supprimée avec le film) + vue `CIN_FILM_LIB` (catégorie, acteur, durée « 2 h 05 », présence d'une photo) + menus **Cinéma → Films → Saisie / Liste**. Joué sur la base locale.
+- [x] Décisions : **photo stockée dans la base** (BLOB, JPG / PNG / WEBP, 2 Mo max, format reconnu sur le contenu du fichier) et **ajoutée depuis la fiche du film** (pas dans le formulaire de saisie).
+- [x] `film-saisie.jsp` : titre, catégorie (actives), acteur principal, durée en minutes, PA, description, état.
+- [x] `film-liste.jsp` (maquette) : cartes avec vignette, titre (acteur), catégorie, description, durée, bouton Détail ; filtres titre / catégorie / acteur / durée min-max / état ; pagination APJ.
+- [x] `film-fiche.jsp` (maquette) : photo en grand avec l'état, infos, ajouter / changer / supprimer la photo, Modifier, Supprimer.
+- [x] `film-modif.jsp`.
+- [x] Servlet `arbiochem-war/src/java/cinema/servlet/CinFilmPhotoServlet` (`/cinema/film-photo`) : GET = image (ou « Pas de photo »), POST = enregistrer / supprimer ; réservée aux utilisateurs connectés.
+- [x] Contrôles (Java) : titre obligatoire, catégorie active, acteur existant, durée 1 à 600 min, PA ≥ 0, description ≤ 1000 caractères.
+- [x] Tests faits par moi : compilation Java + servlet + 30 JSP, 16 tests Java avec ROLLBACK, test des photos de 300 octets à 2 Mo (relues identiques), scripts rejoués depuis zéro (étapes 0 à 3), tests des étapes 1 et 2 relancés.
+- [ ] **À tester par toi dans WildFly** : saisie d'un film, ajout / changement / suppression de la photo, liste en cartes (voir le tableau en bas de `instruction/CINEMA.md` §6 ter).
+
+Problème découvert : le pilote Oracle du projet (`ojdbc6-11.jar`) est très ancien. `setBinaryStream` / `setBytes` échouent au-delà de quelques Ko (ORA-01460) et `getBytes` sur un BLOB renvoie le pointeur au lieu du contenu. `CinFilmPhoto` écrit donc avec `EMPTY_BLOB()` + `SELECT ... FOR UPDATE` + `getBinaryOutputStream()`, et lit avec `getBlob()`.
 
 ### Étape 4 : Achats (films et matériel) → sortie de caisse
 

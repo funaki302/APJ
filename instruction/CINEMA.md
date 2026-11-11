@@ -1,6 +1,6 @@
 # CINEMA : module de gestion d'un cinéma
 
-Dernière mise à jour : 11/11/2026 (étape 2)
+Dernière mise à jour : 11/11/2026 (étape 3)
 
 Plan de travail et décisions : `TEST/CINEMA/TO-DO-CINEMA-1.md`. Livraisons : `TEST/CINEMA/ETAPE-n/`.
 
@@ -22,6 +22,7 @@ Le cinéma est un module **séparé** du reste de l'ERP : rien de l'existant n'e
 
 | Partie | Emplacement |
 |---|---|
+| Servlets | `arbiochem-war/src/java/cinema/servlet/` (`@WebServlet`, rien à déclarer dans `web.xml`) |
 | Java | `arbiochem-ejb/src/java/cinema/` : `salle`, `film`, `achat`, `diffusion`, `reservation`, `paiement` (paiement + facture), `utils` |
 | JSP | `arbiochem-war/web/pages/cinema/` : `salle/`, `film/`, `achat/`, `diffusion/`, `reservation/`, `paiement/`, `facture/`, `client/`, `inc/` (fragments) |
 | SQL | `data/cinema/` : `etape-n-*.sql` (à jouer dans l'ordre) et `cinema-reset.sql` |
@@ -40,6 +41,7 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 | `etape-0-menu.sql` | menu racine **Cinéma** (icône `movie`) + sous-menu **Accueil cinéma** + droit d'accès `USERMENU` (`UMCINEMA01`) |
 | `etape-1-referentiels.sql` | référentiels : tables `CIN_CINEMA`, `CIN_CLASSE_PLACE`, `CIN_CATEGORIE_FILM`, `CIN_ACTEUR`, `CIN_PARAMETRE`, vues `*_LIB`, données initiales, menus Configurations |
 | `etape-2-salles.sql` | tables `CIN_SALLE`, `CIN_PLACE`, vues `CIN_SALLE_LIB`, `CIN_PLACE_LIB`, menus Salles |
+| `etape-3-films.sql` | tables `CIN_FILM`, `CIN_FILM_PHOTO`, vue `CIN_FILM_LIB`, menus Films |
 | `cinema-reset.sql` | supprime tous les objets `CIN_*` / `SEQ_CIN_*` / `GETSEQCIN*` et les menus `MENDYNCINEMA%`. Testé le 11/11/2026. |
 
 ## 4. Avancement
@@ -49,7 +51,7 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 | 0 | Socle : packages, dossiers, menu, accueil, reset, doc | fait (11/11/2026) |
 | 1 | Référentiels | fait (11/11/2026) |
 | 2 | Salles et places | fait (11/11/2026) |
-| 3 | Films | à faire |
+| 3 | Films | fait (11/11/2026) |
 | 4 | Achats → sortie de caisse | à faire |
 | 5 | Diffusions | à faire |
 | 6 | Réservations | à faire |
@@ -93,6 +95,28 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 - **Modification du plan** : `salle-plan.jsp` envoie `modifs = "idplace:idclasse;idplace:HS;..."` à `apres-salle-plan.jsp` → `CinSalle.modifierPlaces(idSalle, modifs)` (sa propre transaction). Une classe remet la place en service ; `HS` la met hors service sans changer sa classe.
 - **Suppression d'une salle** : supprime ses places (`ON DELETE CASCADE`).
 
+## 6 ter. Étape 3 : films
+
+| Table | Classe Java | Préfixe id | Pages |
+|---|---|---|---|
+| `CIN_FILM` (vue `CIN_FILM_LIB`) | `cinema.film.CinFilm` / `CinFilmLib` | `CINFIL` | `cinema/film/film-{saisie,liste,fiche,modif}.jsp` |
+| `CIN_FILM_PHOTO` | `cinema.film.CinFilmPhoto` (pas une `ClassMAPTable`) | clé = id du film | servlet `/cinema/film-photo` |
+
+- **Photo** : stockée en base (BLOB), une par film, supprimée avec le film. JPG / PNG / WEBP reconnus sur les premiers octets du fichier (un `.jpg` qui n'est pas une image est refusé), 2 Mo maximum.
+- **Servlet** `cinema.servlet.CinFilmPhotoServlet` (`/cinema/film-photo`, dans `arbiochem-war`) : `GET ?id=` renvoie l'image ou un dessin « Pas de photo » ; `POST` multipart (`idfilm` + `photo`, ou `idfilm` + `action=supprimer`) enregistre puis revient à la fiche. Réservée aux utilisateurs connectés.
+- **Liste en cartes** : `film-liste.jsp` garde le formulaire de recherche et la pagination de `PageRecherche` mais affiche `pr.getListe()` en cartes au lieu du tableau.
+- **Durée** saisie en minutes, affichée « 2 h 05 » (`DUREELIB`).
+
+Tests à faire dans WildFly :
+
+| Écran | À vérifier |
+|---|---|
+| Films → Saisie | titre, catégorie, acteur, 125 min, PA → la fiche s'ouvre avec « Pas de photo » |
+| Fiche → Ajouter une photo | choisir un JPG ou PNG → l'affiche apparaît ; « Changer la photo » la remplace ; « Supprimer la photo » remet « Pas de photo » |
+| Fiche → photo refusée | un PDF ou un fichier renommé en .jpg → message « Format non accepté » ; une image de plus de 2 Mo → « L'image dépasse 2 Mo » |
+| Films → Liste | cartes avec vignette, « Titre (acteur) », catégorie, « 2 h 05 », Détail ; filtres et pagination |
+| Fiche → Modifier | durée 700 → refusée ; catégorie inactive non proposée |
+
 ## 7. Pièges APJ (à retenir pour les étapes suivantes)
 
 - **Modification** : `apresTarif.jsp` → `UserEJB.updateObject` → `UpdateObject` → `updateToTableWithHisto`. `controlerUpdate` n'est **pas** appelé (seulement par `updateObjectValidation`). Contrôles de modification : surcharger `updateToTableWithHisto(String, Connection)`.
@@ -100,4 +124,4 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 - **Suppression** : `deleteToTableWithHisto` appelle `controlerDelete(c)`.
 - **Menu** : un menu de niveau 1 doit avoir une ligne `USERMENU` autorisée (voir §5).
 - **Scripts SQL** : `SET DEFINE OFF;` à cause des entités HTML.
-
+- **Pilote Oracle ancien** (`ojdbc6-11.jar`, classes `oracle.jdbc.dbaccess`) : pour un BLOB, ne pas utiliser `setBinaryStream` / `setBytes` / `getBytes`. Écrire avec `EMPTY_BLOB()` + `SELECT ... FOR UPDATE` + `getBinaryOutputStream()`, lire avec `getBlob()` (voir `CinFilmPhoto`).
