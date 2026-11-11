@@ -66,6 +66,10 @@ public class CinDiffusion extends ClassMAPTable {
     @Override
     public int updateToTableWithHisto(String refUser, Connection c) throws Exception {
         if (dejaCommencee(id, c)) throw new Exception("Une s&eacute;ance commenc&eacute;e ou termin&eacute;e ne peut plus &ecirc;tre modifi&eacute;e");
+        int reservations = nbTicketsActifs(id, c);
+        if (reservations > 0) {
+            throw new Exception("Cette s&eacute;ance a " + reservations + " r&eacute;servation(s) active(s) : annulez-les avant de modifier ou d'annuler la s&eacute;ance");
+        }
         if (etat != ANNULEE) verifier(c);
         return super.updateToTableWithHisto(refUser, c);
     }
@@ -73,6 +77,9 @@ public class CinDiffusion extends ClassMAPTable {
     @Override
     public void controlerDelete(Connection c) throws Exception {
         if (dejaCommencee(id, c)) throw new Exception("Une s&eacute;ance commenc&eacute;e ou termin&eacute;e ne peut pas &ecirc;tre supprim&eacute;e");
+        if (CinUtils.entier(c, "select count(*) from CIN_TICKET where iddiffusion = ?", id) > 0) {
+            throw new Exception("Cette s&eacute;ance a des r&eacute;servations : elle ne peut pas &ecirc;tre supprim&eacute;e (l'annuler)");
+        }
         super.controlerDelete(c);
     }
 
@@ -148,6 +155,19 @@ public class CinDiffusion extends ClassMAPTable {
     }
 
     /**
+     * Nombre de tickets actifs (payes, ou reserves non expires) de la seance ; 0 si l'etape 6 n'est pas installee.
+     */
+    public static int nbTicketsActifs(String idDiffusion, Connection c) throws Exception {
+        if (CinUtils.estVide(idDiffusion)) return 0;
+        try {
+            return CinUtils.entier(c, "select count(*) from CIN_TICKET_LIB where iddiffusion = ? and actif = 1", idDiffusion);
+        } catch (java.sql.SQLException e) {
+            if (e.getErrorCode() == 942) return 0;
+            throw e;
+        }
+    }
+
+    /**
      * Vrai si la seance (telle qu'elle est en base) a deja commence.
      */
     public static boolean dejaCommencee(String idDiffusion, Connection c) throws Exception {
@@ -155,9 +175,53 @@ public class CinDiffusion extends ClassMAPTable {
         return CinUtils.entier(c, "select count(*) from CIN_DIFFUSION_LIB where id = ? and date_debut <= sysdate", idDiffusion) > 0;
     }
 
+    private static final String COLONNES_LIB = "select id, idfilm, idfilmlib, duree, dureelib, idsalle, idsallelib, idcinema, idcinemalib,"
+            + " daty, heure, heure_fin, nb_places, etat, etatlib from CIN_DIFFUSION_LIB";
+
+    private static CinDiffusionLib lireLigne(ResultSet rs) throws Exception {
+        CinDiffusionLib d = new CinDiffusionLib();
+        d.setId(rs.getString("id"));
+        d.setIdfilm(rs.getString("idfilm"));
+        d.setIdfilmlib(rs.getString("idfilmlib"));
+        d.setDuree(rs.getInt("duree"));
+        d.setDureelib(rs.getString("dureelib"));
+        d.setIdsalle(rs.getString("idsalle"));
+        d.setIdsallelib(rs.getString("idsallelib"));
+        d.setIdcinema(rs.getString("idcinema"));
+        d.setIdcinemalib(rs.getString("idcinemalib"));
+        d.setDaty(rs.getDate("daty"));
+        d.setHeure(rs.getString("heure"));
+        d.setHeure_fin(rs.getString("heure_fin"));
+        d.setNb_places(rs.getInt("nb_places"));
+        d.setEtat(rs.getInt("etat"));
+        d.setEtatlib(rs.getString("etatlib"));
+        return d;
+    }
+
+    /**
+     * Une seance avec film, salle, heure de fin et statut (vue CIN_DIFFUSION_LIB), ou null.
+     */
+    public static CinDiffusionLib lireLib(String idDiffusion, Connection c) throws Exception {
+        boolean canClose = false;
+        try {
+            if (c == null) {
+                c = new UtilDB().GetConn();
+                canClose = true;
+            }
+            try (PreparedStatement ps = c.prepareStatement(COLONNES_LIB + " where id = ?")) {
+                ps.setString(1, idDiffusion);
+                try (ResultSet rs = ps.executeQuery()) {
+                    return rs.next() ? lireLigne(rs) : null;
+                }
+            }
+        } finally {
+            if (canClose) c.close();
+        }
+    }
+
     /**
      * Seances (annulees comprises) dont le debut est entre debut (inclus) et fin (exclu), triees par debut puis salle.
-     * Sert au calendrier.
+     * Sert au calendrier et au choix d'une seance a reserver.
      */
     public static CinDiffusionLib[] getDiffusionsEntre(Date debut, Date fin, String idCinema, Connection c) throws Exception {
         boolean canClose = false;
@@ -167,9 +231,7 @@ public class CinDiffusion extends ClassMAPTable {
                 canClose = true;
             }
             List<CinDiffusionLib> liste = new ArrayList<CinDiffusionLib>();
-            String sql = "select id, idfilm, idfilmlib, duree, dureelib, idsalle, idsallelib, idcinema, idcinemalib, daty, heure, heure_fin,"
-                    + " nb_places, etat, etatlib from CIN_DIFFUSION_LIB where date_debut >= ? and date_debut < ?"
-                    + " and (? is null or idcinema = ?) order by date_debut, idsallelib";
+            String sql = COLONNES_LIB + " where date_debut >= ? and date_debut < ? and (? is null or idcinema = ?) order by date_debut, idsallelib";
             String cinema = CinUtils.estVide(idCinema) ? null : idCinema;
             try (PreparedStatement ps = c.prepareStatement(sql)) {
                 ps.setDate(1, debut);
@@ -177,25 +239,7 @@ public class CinDiffusion extends ClassMAPTable {
                 ps.setString(3, cinema);
                 ps.setString(4, cinema);
                 try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        CinDiffusionLib d = new CinDiffusionLib();
-                        d.setId(rs.getString("id"));
-                        d.setIdfilm(rs.getString("idfilm"));
-                        d.setIdfilmlib(rs.getString("idfilmlib"));
-                        d.setDuree(rs.getInt("duree"));
-                        d.setDureelib(rs.getString("dureelib"));
-                        d.setIdsalle(rs.getString("idsalle"));
-                        d.setIdsallelib(rs.getString("idsallelib"));
-                        d.setIdcinema(rs.getString("idcinema"));
-                        d.setIdcinemalib(rs.getString("idcinemalib"));
-                        d.setDaty(rs.getDate("daty"));
-                        d.setHeure(rs.getString("heure"));
-                        d.setHeure_fin(rs.getString("heure_fin"));
-                        d.setNb_places(rs.getInt("nb_places"));
-                        d.setEtat(rs.getInt("etat"));
-                        d.setEtatlib(rs.getString("etatlib"));
-                        liste.add(d);
-                    }
+                    while (rs.next()) liste.add(lireLigne(rs));
                 }
             }
             return liste.toArray(new CinDiffusionLib[0]);

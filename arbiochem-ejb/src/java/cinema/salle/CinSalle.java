@@ -215,6 +215,10 @@ public class CinSalle extends ClassMAPTable {
                 String valeur = e.getValue();
                 if (!placesSalle.contains(idPlace)) throw new Exception("La place " + idPlace + " n'appartient pas &agrave; cette salle");
                 if (HORS_SERVICE.equals(valeur)) {
+                    if (placeOccupeeAVenir(idPlace, c)) {
+                        throw new Exception("La place " + CinUtils.valeur(c, "select numero from CIN_PLACE where id = ?", idPlace)
+                                + " est r&eacute;serv&eacute;e pour une s&eacute;ance &agrave; venir : elle ne peut pas passer hors service");
+                    }
                     psHs.setString(1, idPlace);
                     psHs.setString(2, idSalle);
                     psHs.addBatch();
@@ -248,6 +252,19 @@ public class CinSalle extends ClassMAPTable {
             throw e;
         } finally {
             if (c != null) c.close();
+        }
+    }
+
+    /**
+     * Vrai si la place est reservee ou payee pour une seance pas encore terminee (vue de l'etape 6).
+     */
+    private static boolean placeOccupeeAVenir(String idPlace, Connection c) throws Exception {
+        try {
+            return CinUtils.entier(c, "select count(*) from CIN_PLACE_DIFFUSION pd join CIN_DIFFUSION_LIB d on d.id = pd.iddiffusion"
+                    + " where pd.idplace = ? and pd.statut in ('RESERVEE', 'PAYEE') and d.date_fin > sysdate", idPlace) > 0;
+        } catch (java.sql.SQLException e) {
+            if (e.getErrorCode() == 942) return false; // vue absente : etape 6 pas encore installee
+            throw e;
         }
     }
 

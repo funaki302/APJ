@@ -119,28 +119,14 @@ public class CinAchat extends ClassMere {
     }
 
     /**
-     * Mouvement de caisse vise : DEBIT = montant de l'achat, IDORIGINE = id de l'achat.
-     * Pas d'ecriture comptable generale (MvtCaisse.validerObject n'est pas appele : il exige un tiers comptable).
+     * Mouvement de caisse vise : DEBIT = montant de l'achat, IDORIGINE = id de l'achat (voir CinCaisse).
      */
     public MvtCaisse genererSortieCaisse(String refUser, Connection c) throws Exception {
         if (!CinUtils.estVide(CinUtils.valeur(c, "select idmvtcaisse from CIN_ACHAT where id = ?", id))) {
             throw new Exception("La sortie de caisse de cet achat existe d&eacute;j&agrave;");
         }
-        MvtCaisse mvt = new MvtCaisse();
-        mvt.setDesignation("Achat cin&eacute;ma " + id + " - " + fournisseur);
-        mvt.setIdCaisse(idcaisse);
-        mvt.setDaty(daty);
-        mvt.setDebit(montant);
-        mvt.setCredit(0);
-        mvt.setIdModePaiement(idmodepaiement);
-        mvt.setIdOrigine(id);
-        mvt.setIdDevise("AR");
-        mvt.setTaux(1);
-        mvt.setDatycomptabilisation(new Date(System.currentTimeMillis()));
-        mvt.setHeure(utilitaire.Utilitaire.heureCouranteHMS());
-        mvt.createObject(refUser, c);
-        mvt.setEtat(ConstanteEtat.getEtatValider());
-        mvt.updateToTableWithHisto(refUser, c);
+        MvtCaisse mvt = cinema.utils.CinCaisse.creerMouvementVise("Achat cin&eacute;ma " + id + " - " + fournisseur, idcaisse, daty,
+                montant, 0, idmodepaiement, id, null, refUser, c);
         try (PreparedStatement ps = c.prepareStatement("update CIN_ACHAT set idmvtcaisse = ? where id = ?")) {
             ps.setString(1, mvt.getId());
             ps.setString(2, id);

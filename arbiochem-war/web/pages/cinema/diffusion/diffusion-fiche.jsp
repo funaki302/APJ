@@ -3,11 +3,12 @@
 <%@page import="cinema.diffusion.CinDiffusionLib"%>
 <%@page import="cinema.salle.CinSalle"%>
 <%@page import="cinema.salle.CinClassePlace"%>
-<%@page import="cinema.salle.CinPlaceLib"%>
+<%@page import="cinema.reservation.CinTicket"%>
+<%@page import="cinema.reservation.CinPlaceDiffusion"%>
 <%@page import="cinema.utils.CinUtils"%>
 <%@page import="affichage.PageConsulte"%>
 <%@page import="user.UserEJB"%>
-<%-- Fiche d'une diffusion : infos, affiche du film, plan de la salle. La reservation arrive a l'etape 6. --%>
+<%-- Fiche d'une diffusion : infos, affiche du film, plan de la salle avec l'occupation des places, bouton Reserver. --%>
 <%
     try {
         UserEJB u = (UserEJB) session.getValue("u");
@@ -32,19 +33,22 @@
         pc.getChampByName("duree").setVisible(false);
         pc.getChampByName("etat").setVisible(false);
         String lien = (String) session.getValue("lien");
-        boolean commencee;
+        boolean commencee, ouverte;
+        int nbActifs;
         java.sql.Connection c = null;
         try {
             c = new utilitaire.UtilDB().GetConn();
             commencee = CinDiffusion.dejaCommencee(id, c);
+            ouverte = CinTicket.reservationOuverte(id, c);
+            nbActifs = CinDiffusion.nbTicketsActifs(id, c);
         } finally {
             if (c != null) c.close();
         }
         boolean annulee = d.getEtat() == CinDiffusion.ANNULEE;
 
-        CinPlaceLib[] planPlaces = CinSalle.getPlaces(d.getIdsalle(), null);
+        CinPlaceDiffusion[] planPlaces = CinTicket.getPlacesDiffusion(id, null);
         int planColonnes = 0;
-        for (CinPlaceLib p : planPlaces) planColonnes = Math.max(planColonnes, p.getColonne());
+        for (CinPlaceDiffusion p : planPlaces) planColonnes = Math.max(planColonnes, p.getColonne());
         CinClassePlace[] planClasses = CinClassePlace.getClassesActives(null);
         boolean planEditable = false;
 %>
@@ -58,7 +62,9 @@
                          style="width: 100%; max-height: 220px; object-fit: contain; background: #E9ECEF; border-radius: 12px; margin-bottom: 10px;">
                     <% out.println(pc.getHtml()); %>
                     <div class="box-footer">
-                        <% if (!commencee && !annulee) { %>
+                        <% if (!commencee && !annulee && nbActifs > 0) { %>
+                        <span class="text-muted"><%= nbActifs %> r&eacute;servation(s) active(s) : s&eacute;ance non modifiable.</span>
+                        <% } else if (!commencee && !annulee) { %>
                         <a class="btn btn-secondary pull-right" href="<%= lien %>?but=cinema/diffusion/diffusion-modif.jsp&id=<%= id %>" style="margin-right: 10px">Modifier / annuler</a>
                         <a class="btn btn-danger pull-left" href="<%= lien %>?but=apresTarif.jsp&id=<%= id %>&acte=delete&bute=cinema/diffusion/diffusion-liste.jsp&classe=cinema.diffusion.CinDiffusion"
                            onclick="return confirm('Supprimer cette diffusion ?');">Supprimer</a>
@@ -73,7 +79,12 @@
             <div class="box">
                 <div class="box-header with-border">
                     <h3 class="box-title">Places de la salle <%= d.getIdsallelib() %></h3>
-                    <span class="btn btn-primary btn-sm pull-right disabled" title="Disponible &agrave; l'&eacute;tape 6">R&eacute;server (bient&ocirc;t)</span>
+                    <% if (ouverte) { %>
+                    <a class="btn btn-primary btn-sm pull-right" href="<%= lien %>?but=cinema/reservation/reservation-saisie.jsp&iddiffusion=<%= id %>">R&eacute;server des places</a>
+                    <% } else { %>
+                    <span class="btn btn-primary btn-sm pull-right disabled" title="S&eacute;ance annul&eacute;e, commenc&eacute;e ou r&eacute;servations closes">R&eacute;servations closes</span>
+                    <% } %>
+                    <a class="btn btn-secondary btn-sm pull-right" style="margin-right: 6px;" href="<%= lien %>?but=cinema/reservation/reservation-liste.jsp&iddiffusion=<%= id %>">R&eacute;servations</a>
                 </div>
                 <div class="box-body">
                     <%@ include file="../inc/plan-salle.jspf" %>

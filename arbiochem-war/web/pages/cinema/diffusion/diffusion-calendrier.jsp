@@ -15,7 +15,8 @@
 <%!
     static String html(String s) {
         if (s == null) return "";
-        return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
+        // les textes de la base contiennent deja des entites HTML (ex. &eacute;) : on garde les entites valides, on neutralise le reste
+        return s.replaceAll("&(?!#?[a-zA-Z0-9]+;)", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;");
     }
     static final String[] COULEURS = {"#2B68D9", "#E67E22", "#16A085", "#8E44AD", "#C0392B", "#2C3E50", "#D35400", "#27AE60"};
 %>

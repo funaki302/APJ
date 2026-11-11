@@ -1,6 +1,6 @@
 # CINEMA : module de gestion d'un cinéma
 
-Dernière mise à jour : 11/11/2026 (étape 5)
+Dernière mise à jour : 11/11/2026 (étape 7)
 
 Plan de travail et décisions : `TEST/CINEMA/TO-DO-CINEMA-1.md`. Livraisons : `TEST/CINEMA/ETAPE-n/`.
 
@@ -22,7 +22,7 @@ Le cinéma est un module **séparé** du reste de l'ERP : rien de l'existant n'e
 
 | Partie | Emplacement |
 |---|---|
-| Servlets | `arbiochem-war/src/java/cinema/servlet/` (`@WebServlet`, rien à déclarer dans `web.xml`) |
+| Servlets | `arbiochem-war/src/java/cinema/servlet/` (`@WebServlet`, rien à déclarer dans `web.xml`) : `/cinema/film-photo`, `/cinema/clients` |
 | Java | `arbiochem-ejb/src/java/cinema/` : `salle`, `film`, `achat`, `diffusion`, `reservation`, `paiement` (paiement + facture), `utils` |
 | JSP | `arbiochem-war/web/pages/cinema/` : `salle/`, `film/`, `achat/`, `diffusion/`, `reservation/`, `paiement/`, `facture/`, `client/`, `inc/` (fragments) |
 | SQL | `data/cinema/` : `etape-n-*.sql` (à jouer dans l'ordre) et `cinema-reset.sql` |
@@ -44,7 +44,10 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 | `etape-3-films.sql` | tables `CIN_FILM`, `CIN_FILM_PHOTO`, vue `CIN_FILM_LIB`, menus Films |
 | `etape-4-achats.sql` | tables `CIN_ACHAT`, `CIN_ACHAT_FILLE`, vues `CIN_ACHAT_LIB`, `CIN_ACHAT_FILLE_LIB`, caisse `CAICINEMA`, menus Achats |
 | `etape-5-diffusions.sql` | table `CIN_DIFFUSION`, vue `CIN_DIFFUSION_LIB`, menus Diffusions (saisie, liste, calendrier) |
-| `cinema-reset.sql` | supprime tous les objets `CIN_*` / `SEQ_CIN_*` / `GETSEQCIN*`, les menus `MENDYNCINEMA%`, la caisse `CAICINEMA` avec ses reports et mouvements, et les mouvements de caisse `IDORIGINE LIKE 'CIN%'`. Testé le 11/11/2026. |
+| `etape-6-reservations.sql` | tables `CIN_TICKET`, `CIN_TICKET_DETAIL`, vues `CIN_TICKET_LIB`, `CIN_TICKET_DETAIL_LIB`, `CIN_PLACE_DIFFUSION`, menus Réservations |
+| `etape-7-paiements.sql` | tables `CIN_MODE_CAISSE`, `CIN_PAIEMENT`, `CIN_PAIEMENT_DETAIL`, `CIN_FACTURE`, `CIN_FACTURE_DETAIL`, vues `*_LIB`, mode Mobile money `MPCINMOB`, menus Paiements / Factures / Caisses par mode |
+| `donnees-demo.sql` | **données de démonstration** (après les étapes 0 à 7, rejouable) : acteurs, films, salles, achats, séances, clients `CLICINDEMO...`, tickets, un ticket payé avec sa facture |
+| `cinema-reset.sql` | supprime tous les objets `CIN_*` / `SEQ_CIN_*` / `GETSEQCIN*`, les menus `MENDYNCINEMA%`, la caisse `CAICINEMA` avec ses reports et mouvements, les mouvements de caisse `IDORIGINE LIKE 'CIN%'`, les clients `CLICIN%` et le mode `MPCINMOB`. Testé le 11/11/2026. |
 
 ## 4. Avancement
 
@@ -56,8 +59,8 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 | 3 | Films | fait (11/11/2026) |
 | 4 | Achats → sortie de caisse | fait (11/11/2026) |
 | 5 | Diffusions | fait (11/11/2026) |
-| 6 | Réservations | à faire |
-| 7 | Paiement → facture + entrée de caisse | à faire |
+| 6 | Réservations | fait (11/11/2026) |
+| 7 | Paiement → facture + entrée de caisse | fait (11/11/2026) |
 | 8 | Consultation client, tableau de bord | à faire |
 | 9 | Recette finale | à faire |
 
@@ -169,6 +172,66 @@ Tests à faire dans WildFly :
 | Diffusions → Calendrier | séances de la semaine par jour, couleur par salle, semaine suivante / précédente |
 | Salles → fiche d'une salle avec séances → Supprimer | refusé « Cette salle a des diffusions » |
 
+## 6 sexies. Étape 6 : réservations
+
+| Table / vue | Classe Java | Préfixe id | Pages |
+|---|---|---|---|
+| `CIN_TICKET` (vue `CIN_TICKET_LIB`) | `cinema.reservation.CinTicket` (`ClassMere`) / `CinTicketLib` | `CINTKT` | `cinema/reservation/reservation-{saisie,liste,fiche}.jsp`, `apres-reservation.jsp` |
+| `CIN_TICKET_DETAIL` (vue `CIN_TICKET_DETAIL_LIB`) | `CinTicketDetail` (`ClassFille`, liaison `idticket`) / `CinTicketDetailLib` | `CINTKD` | places du ticket |
+| vue `CIN_PLACE_DIFFUSION` | `CinPlaceDiffusion` (étend `CinPlaceLib`) | — | plan d'une séance |
+
+- **États d'un ticket** : 1 réservé, 11 payé (étape 7), 0 annulé. **Expiré** = réservé et `SYSDATE > début de séance − DELAI_EXPIRATION_MIN` ; calculé dans `CIN_TICKET_LIB` (`ETATLIB`, `ACTIF`, `DATE_LIMITELIB`). Un ticket **actif** (payé, ou réservé non expiré) occupe ses places dans `CIN_PLACE_DIFFUSION` ; un ticket expiré ou annulé les libère.
+- **Réserver** : `CinTicket.reserver(idDiffusion, idClient, idPlaces[], remarque, refUser)` : verrou `SELECT ... FOR UPDATE` sur la séance (deux caisses passent l'une après l'autre), contrôles (client, séance programmée, `reservationOuverte`, places de la salle, en service, libres), prix figés depuis la classe, insertion mère + places (`ClassMere.createObject`), commit.
+- **Réservation ouverte** (`CinTicket.reservationOuverte`) : séance programmée et `SYSDATE <= début − délai`. Elle ferme au moment où un ticket non payé expirerait.
+- **Annuler** : `apresTarif.jsp` `acte=annuler` → `controleAnnule` (refus si payé ou déjà annulé). Pas de suppression de ticket. `validerObject` refuse : le passage à « payé » se fera par le paiement (étape 7).
+- **Plan d'une séance** : `CinTicket.getPlacesDiffusion(idDiffusion, c)` donne des `CinPlaceDiffusion` au fragment `plan-salle.jspf`, qui barre (✕) les places réservées / payées et ajoute `data-statut`, `data-prix`, `data-numero`. `request.setAttribute("cinTicketCourant", id)` encadre les places d'un ticket.
+- **Recherche de client** : servlet `/cinema/clients?q=` (JSON, 15 résultats, nom / téléphone / id). Création d'un client : page client existante (`client/client-saisie.jsp`).
+- **Protections ajoutées** : `CinDiffusion` (pas de modification / annulation avec réservations actives, pas de suppression avec tickets), `CinSalle.modifierPlaces` (pas de mise hors service d'une place réservée pour une séance à venir).
+
+Tests à faire dans WildFly (après `donnees-demo.sql`) :
+
+| Écran | À vérifier |
+|---|---|
+| Diffusions → fiche « Le Lémurien d'or » (demain 18:00) | plan : C5, C6, F4-F6 barrées ✕, F10 hachurée ; légende « Réservée (5) » ; bouton « Réserver des places » |
+| Réserver des places | rechercher « raz » → Razafy Nirina ; cliquer A1 et D3 → « A1, D3 · Total 25 000 Ar » ; Valider → fiche du ticket, places encadrées sur le plan, « à payer avant le ... 17:30 » |
+| Réserver une place barrée | impossible (le clic ne fait rien) |
+| Deux onglets sur la même séance | réserver la même place dans les deux : le 2e reçoit « La place ... vient d'être prise » |
+| Réservations → Liste | 5 tickets de démo : Réservé ×3 (+ le vôtre), Annulé, **Expiré** (séance « Rire en famille » dans 20 min) ; filtres |
+| Fiche d'un ticket réservé → Annuler | statut Annulé, places de nouveau libres sur le plan |
+| Nouvelle réservation (menu) | liste des séances ouvertes : la séance dans 20 min et celle d'hier n'y sont pas |
+| Fiche de la séance de demain → Modifier / annuler | refusé tant qu'il y a des réservations actives |
+| Salles → Salle 1 → Modifier le plan → mettre C5 hors service | refusé (place réservée) |
+| Configurations → Paramètres → délai 30 → 60 | le ticket expire plus tôt (la vue recalcule tout de suite) ; remettre 30 |
+
+## 6 septies. Étape 7 : paiement, facture, caisse
+
+| Table | Classe Java | Préfixe id | Pages |
+|---|---|---|---|
+| `CIN_MODE_CAISSE` (vue `_LIB`) | `cinema.paiement.CinModeCaisse` / `CinModeCaisseLib` | `CINMCA` | `cinema/paiement/mode-caisse-{liste,saisie,modif}.jsp` |
+| `CIN_PAIEMENT` (vue `_LIB`) | `CinPaiement` (`ClassMere`) / `CinPaiementLib` | `CINPAI` | `cinema/paiement/paiement-{saisie,liste,fiche}.jsp`, `apres-paiement.jsp` |
+| `CIN_PAIEMENT_DETAIL` (vue `_LIB`) | `CinPaiementDetail` (`ClassFille`, liaison `idpaiement`) / `CinPaiementDetailLib` | `CINPAD` | lignes du paiement |
+| `CIN_FACTURE` (vue `_LIB`) | `CinFacture` / `CinFactureLib` | `CINFAC`, numéro `FCaaaa-nnnnn` (séquence `SEQ_CIN_FACTURE_NUMERO`) | `cinema/facture/facture-{liste,fiche,impression}.jsp` |
+| `CIN_FACTURE_DETAIL` | `CinFactureDetail` | `CINFAD` | lignes de la facture |
+
+- **Payer** : `CinPaiement.payer(idTicket, modes[], caisses[], montants[], refUser)` (sa transaction) : `SELECT ... FOR UPDATE` sur le ticket ; refus si payé, annulé ou expiré ; lignes vides ignorées ; mode parmi les modes actifs de `CIN_MODE_CAISSE` ; caisse active ; **somme = montant du ticket** (tolérance 0,005) ; puis paiement + lignes (`ClassMere.createObject`), un `MvtCaisse` visé **CREDIT** par ligne (`CinCaisse.creerMouvementVise`, `IDORIGINE` = paiement, `IDTIERS` = client), facture + une ligne par place, ticket et places à l'état 11.
+- **Mouvements de caisse du cinéma** : `cinema.utils.CinCaisse.creerMouvementVise` (achat : DEBIT ; paiement : CREDIT). Retrouver : `IDORIGINE LIKE 'CINACH%'` (sorties) et `IDORIGINE LIKE 'CINPAI%'` (entrées).
+- **Impression** : `facture-impression.jsp` est une page autonome (nouvel onglet, sans menu, réservée aux utilisateurs connectés) : facture, modes de paiement, un billet par place ; « Exporter en PDF » = `window.print()` → « Enregistrer au format PDF ».
+- **Montants saisis** : espaces (y compris insécables) acceptés, virgule = point.
+- Un paiement ne s'annule pas, une facture ne se modifie pas et ne se supprime pas (v1).
+
+Tests à faire dans WildFly (après `donnees-demo.sql`) :
+
+| Écran | À vérifier |
+|---|---|
+| Réservations → ticket de Razafy Nirina (3 Premium, 60 000 Ar) → **Payer** | ligne 1 espèce + Caisse Cinéma + 60 000 ; changer en 40 000 → « Reste à répartir : 20 000 Ar », Valider grisé |
+| Même écran, ligne 2 | Mobile money (caisse Mvola pré-remplie) 20 000 → « Compte juste » → Valider → facture `FCaaaa-00001` avec 3 lignes, message « Paiement enregistré » |
+| Facture → Imprimer / exporter en PDF | nouvel onglet : facture + 3 billets ; « Exporter en PDF » → enregistrer en PDF |
+| Paiements → Liste | « espèce 40 000 + Mobile money 20 000 », facture ; fiche → liens vers les 2 mouvements de caisse (crédit) |
+| Ticket payé | statut Payé, liens Paiement / Facture, plus de bouton Annuler ; places « Payée » sur le plan de la séance |
+| Ticket expiré (séance « Rire en famille ») | pas de bouton Payer |
+| Configurations → Caisses par mode | changer la caisse du chèque, ou désactiver le virement → il n'est plus proposé au paiement |
+| Facture de démo `FCaaaa-D0001` | espèce 10 000 + Mobile money 20 000, places E1 et E2 |
+
 ## 7. Pièges APJ (à retenir pour les étapes suivantes)
 
 - **Modification** : `apresTarif.jsp` → `UserEJB.updateObject` → `UpdateObject` → `updateToTableWithHisto`. `controlerUpdate` n'est **pas** appelé (seulement par `updateObjectValidation`). Contrôles de modification : surcharger `updateToTableWithHisto(String, Connection)`.
@@ -181,3 +244,5 @@ Tests à faire dans WildFly :
 - **Annulation** : `annulerObject` appelle `controleAnnule(c)` (et non `controleAnnuler`).
 - **Tables mère / fille** : APJ ne remplit que les colonnes présentes dans la table (pas besoin de `IDUSER`). Donner une colonne `ETAT` à la table fille, car le visa d'une mère vise aussi ses filles.
 - **Suppression APJ = commit** : `ClassMAPTable.deleteToTable` (via `deleteToTableWithHisto`) fait `commit` de toute la transaction, et `deleteToTableWithHisto` fait `rollback` en cas d'erreur. Ne jamais l'appeler au milieu d'un traitement qui doit rester annulable : supprimer en SQL (requête préparée) dans la transaction.
+- **Sources Java en ASCII pur** : `build.xml` compile en ISO-8859-1. Aucun caractère accentué ou spécial en clair dans un `.java` : utiliser les entités HTML dans les messages (`&eacute;`) ou `(char) 0x00A0` / `\u00e9`.
+- **Accents en base** : les libellés sont souvent stockés en entités HTML (`Cin&eacute;ma`). Pour afficher un texte de la base dans une page, ne pas réécrire `&` en `&amp;` quand il commence une entité valide (voir la fonction `html()` des pages du cinéma).

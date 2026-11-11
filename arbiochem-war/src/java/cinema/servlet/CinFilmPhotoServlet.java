@@ -99,7 +99,7 @@ public class CinFilmPhotoServlet extends HttpServlet {
             response.setContentType("text/html;charset=UTF-8");
             PrintWriter out = response.getWriter();
             String message = e.getMessage() == null ? "Erreur" : e.getMessage().replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ");
-            out.write("<script>alert('" + message.replace("&eacute;", "é").replace("&ecirc;", "ê").replace("&agrave;", "à")
+            out.write("<script>alert('" + message.replace("&eacute;", "\u00e9").replace("&ecirc;", "\u00ea").replace("&agrave;", "\u00e0")
                     + "'); history.back();</script>");
         }
     }

@@ -20,9 +20,9 @@
         {"Films", "Catalogue des films : cat&eacute;gorie, acteur principal, dur&eacute;e, photo.", "cinema/film/film-liste.jsp", "movie", "3"},
         {"Achats", "Achats de films et de mat&eacute;riel : sortie d'argent de la caisse.", "cinema/achat/achat-liste.jsp", "shopping_bag", "4"},
         {"Diffusions", "S&eacute;ances : tel film, dans telle salle, &agrave; telle heure.", "cinema/diffusion/diffusion-calendrier.jsp", "event", "5"},
-        {"R&eacute;servations", "R&eacute;server des places sur le plan de salle d'une diffusion.", null, "confirmation_number", "6"},
-        {"Paiements", "Paiement en une fois, plusieurs modes : facture et entr&eacute;e de caisse.", null, "payments", "7"},
-        {"Factures", "Factures cin&eacute;ma g&eacute;n&eacute;r&eacute;es automatiquement au paiement.", null, "receipt_long", "7"},
+        {"R&eacute;servations", "R&eacute;server des places sur le plan de salle d'une diffusion.", "cinema/reservation/reservation-liste.jsp", "confirmation_number", "6"},
+        {"Paiements", "Paiement en une fois, plusieurs modes : facture et entr&eacute;e de caisse.", "cinema/paiement/paiement-liste.jsp", "payments", "7"},
+        {"Factures", "Factures cin&eacute;ma g&eacute;n&eacute;r&eacute;es automatiquement au paiement.", "cinema/facture/facture-liste.jsp", "receipt_long", "7"},
         {"Clients", "R&eacute;servations et paiements de chaque client.", null, "group", "8"},
         {"Tableau de bord", "Recettes, remplissage des salles, achats et solde de la caisse cin&eacute;ma.", null, "bar_chart", "8"}
     };

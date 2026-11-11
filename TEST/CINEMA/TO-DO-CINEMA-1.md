@@ -142,7 +142,7 @@ Remarques techniques découvertes pendant l'étape :
 - [x] Tests faits par moi : compilation Java + 26 JSP, 17 tests Java avec ROLLBACK, rendu HTML du plan vérifié, scripts rejoués depuis zéro (reset → étapes 0, 1, 2).
 - [ ] **À tester par toi dans WildFly** (voir `TEST/CINEMA/ETAPE-2/README.md`).
 - [x] Fait à l'étape 5 : une salle qui a des diffusions ne peut pas être supprimée (message clair, la passer en Inactive).
-- [ ] À faire à l'étape 6 : interdire la mise hors service d'une place déjà réservée pour une séance à venir.
+- [x] Fait à l'étape 6 : une place réservée ou payée pour une séance à venir ne peut pas passer hors service.
 
 ### Étape 3 : Films — ✅ FAIT (11/11/2026)
 
@@ -192,29 +192,39 @@ Choix et constats de l'étape :
 
 Problème découvert : `ClassMAPTable.deleteToTable` (appelé par `deleteToTableWithHisto`) fait un **`commit`** de toute la transaction. Mes tests qui finissaient par une suppression APJ avaient donc laissé des données de test en base (une salle, deux acteurs « Rabe Hery », la catégorie Drame inactive) : nettoyées, tests corrigés. Dans l'appli ce n'est pas gênant (une suppression via `apresTarif.jsp` est seule dans sa transaction), mais il ne faut **jamais** appeler une suppression APJ au milieu d'un traitement qui doit pouvoir être annulé (à retenir pour l'étape 6).
 
-### Étape 6 : Réservation (ticket)
+### Étape 6 : Réservation (ticket) — ✅ FAIT (11/11/2026)
 
-- [ ] Tables `CIN_TICKET`, `CIN_TICKET_DETAIL` + vues `CIN_PLACE_DIFFUSION`, `CIN_TICKET_LIB`.
-- [ ] Page `reservation-saisie.jsp` (maquette du bas) : en-tête diffusion (film, titre, salle, heure, durée), client (choix/autocomplete + bouton « + » pour créer un client), **plan de salle** où les places réservées/payées sont barrées (✗) et non cliquables, légende avec les prix, bouton Valider. Total recalculé en direct.
-- [ ] Page relais `apres-reservation.jsp` → `CinTicket.createObject` : crée la mère + une fille par place, fige les prix.
-- [ ] Contrôles (Java, dans la transaction) : au moins une place, places de la bonne salle, **place encore libre pour cette diffusion** (re-vérifiée au moment de l'insertion, pour deux caissiers en même temps), diffusion pas encore commencée ni annulée.
-- [ ] **Expiration** : ticket non payé et `SYSDATE > début de séance − 30 min` (valeur lue dans `CIN_PARAMETRE`) → état « expiré », calculé dans la vue (pas besoin de tâche planifiée), places libérées automatiquement dans `CIN_PLACE_DIFFUSION`.
-- [ ] Liste des réservations (client, date réservation, diffusion, salle, date séance, montant, état) + filtres.
-- [ ] Fiche réservation : infos + liste des places (numéro, classe, prix) + boutons Payer / Annuler.
+- [x] `data/cinema/etape-6-reservations.sql` : tables `CIN_TICKET` (client = table `CLIENT` existante, séance, date / heure de réservation, montant, état 1 réservé / 11 payé / 0 annulé) et `CIN_TICKET_DETAIL` (une ligne par place, séance recopiée, classe et **prix figé**) + vues `CIN_TICKET_LIB`, `CIN_TICKET_DETAIL_LIB`, **`CIN_PLACE_DIFFUSION`** (statut de chaque place pour chaque séance : LIBRE / RESERVEE / PAYEE / HS) + menus **Cinéma → Réservations → Nouvelle réservation / Liste**. Joué sur la base locale.
+- [x] Page `reservation-saisie.jsp` (maquette du bas) : sans séance → liste des séances des 15 prochains jours encore ouvertes ; avec séance → en-tête (affiche, film, salle, date, heure, durée, délai d'expiration), **client** (recherche par nom / téléphone, servlet `/cinema/clients`, + bouton « Nouveau client » vers la saisie client existante), **plan** (places libres cliquables, réservées / payées barrées ✕, hors service hachurées), places choisies + total en direct, remarque, Valider.
+- [x] `apres-reservation.jsp` → `CinTicket.reserver` (sa propre transaction) : **verrou sur la séance** (SELECT ... FOR UPDATE), client existant, séance programmée et réservation encore ouverte, chaque place de la bonne salle, en service et **encore libre**, au moins une place ; prix figés, montant = somme.
+- [x] **Expiration** : un ticket réservé expire `DELAI_EXPIRATION_MIN` (30) minutes avant la séance, calculé dans les vues (aucune tâche planifiée) : statut « Expiré », places de nouveau libres. Les réservations ferment au même moment.
+- [x] Liste des réservations (client, réservé le, film, salle, séance, heure, places, montant, statut ; filtres ; total) et fiche (infos, « à payer avant le », places avec classe et prix, plan de la séance avec les places du ticket encadrées, Annuler).
+- [x] Annulation (état 0) d'un ticket réservé ; un ticket payé ne s'annule pas ; un ticket ne se supprime pas ; un ticket ne se « vise » pas directement (ce sera le paiement, étape 7).
+- [x] Fiche diffusion : plan avec l'occupation réelle, bouton **Réserver des places** (ou « Réservations closes »), lien vers les réservations de la séance.
+- [x] Protections : séance avec réservations actives non modifiable / non annulable, séance avec tickets non supprimable, place réservée non mise hors service.
+- [x] **Données de démonstration** : `data/cinema/donnees-demo.sql` (rejouable, identifiants `...DEMO...`, dates relatives au jour d'exécution) : 4 acteurs, 4 films, 2 salles (classes et une place hors service), 2 achats (un visé avec sa sortie de caisse, un à viser), 7 séances (terminée, dans 20 min, demain ×2, J+2, J+3, annulée), 3 clients `CLICINDEMO...`, 5 tickets (3 réservés, 1 annulé, 1 expiré). Chargées sur la base locale.
+- [x] Tests faits par moi : compilation (29 classes, 42 JSP), rendu HTML du plan en mode séance, 25 tests Java (dont **deux caisses qui réservent la même place en même temps** : la 2e attend le verrou puis est refusée), tous les tests des étapes 1 à 6 relancés sans laisser de données, chaîne complète rejouée depuis zéro (reset → étapes 0 à 6 → démo).
+- [ ] **À tester par toi dans WildFly** (tableau en bas de la section « Étape 6 » de `instruction/CINEMA.md`).
 
-### Étape 7 : Paiement multi-mode → facture + entrée de caisse
+### Étape 7 : Paiement multi-mode → facture + entrée de caisse — ✅ FAIT (11/11/2026)
 
-- [ ] Tables `CIN_PAIEMENT`, `CIN_PAIEMENT_DETAIL`, `CIN_FACTURE`, `CIN_FACTURE_DETAIL` + vues `CIN_PAIEMENT_LIB`, `CIN_FACTURE_LIB`.
-- [ ] Page `paiement-saisie.jsp` depuis la fiche ticket : montant à payer affiché, tableau de lignes (mode de paiement, caisse pré-remplie selon le mode mais modifiable, montant), reste à répartir recalculé en direct.
-- [ ] `CinPaiement.createObject` / `validerObject` (une seule transaction) :
-  - [ ] ticket ni payé, ni annulé, ni expiré ;
-  - [ ] **somme des lignes = montant du ticket** (paiement en une seule fois, sinon refus) ;
-  - [ ] un `MvtCaisse` **CREDIT** par ligne (`IDMODEPAIEMENT`, `IDCAISSE`, `IDTIERS` = client, `IDORIGINE` = id du paiement), id du mouvement stocké dans `IDMVTCAISSE` ;
-  - [ ] **génération automatique de la facture** `CIN_FACTURE` (numéro séquentiel, une ligne par place) ;
-  - [ ] ticket passé à l'état « payé ».
-- [ ] Liste des tickets (payé / réservé), fiche ticket (+ date de paiement, détail des modes, lien vers la facture).
-- [ ] Liste et fiche des factures cinéma (`cinema/facture/`).
-- [ ] Page d'impression du ticket et de la facture (mise en page imprimable) avec un bouton **« Exporter en PDF »**.
+- [x] `data/cinema/etape-7-paiements.sql` : tables `CIN_MODE_CAISSE` (caisse proposée pour chaque mode), `CIN_PAIEMENT` (un seul paiement par ticket), `CIN_PAIEMENT_DETAIL` (une ligne par mode : caisse, montant, mouvement de caisse), `CIN_FACTURE` (numéro `FCaaaa-nnnnn`, une par ticket), `CIN_FACTURE_DETAIL` (une ligne par place) + vues `*_LIB` + mode **Mobile money** (`MPCINMOB`) ajouté dans `MODEPAIEMENT` + menus **Cinéma → Paiements**, **Cinéma → Factures**, **Configurations → Caisses par mode**. Joué sur la base locale.
+- [x] Caisses par mode (modifiables) : espèce → Caisse Cinéma, Mobile money → caisse Mvola, chèque → chèques à encaisser, virement → banque BRED (la Caisse Cinéma si une caisse n'existe pas dans la base).
+- [x] `paiement-saisie.jsp` (bouton **Payer** de la fiche réservation) : récapitulatif du ticket, lignes mode / caisse (pré-remplie selon le mode, modifiable) / montant, « + Ajouter un mode », montant saisi et **reste à répartir** en direct, bouton Valider actif seulement quand le compte est juste.
+- [x] `CinPaiement.payer` (une seule transaction) : verrou sur le ticket, ticket réservé et **pas expiré**, modes proposés, caisses actives, **somme = montant du ticket** (paiement en une seule fois) ; paiement + lignes ; **un mouvement de caisse visé (CREDIT) par ligne** dans sa caisse (`IDORIGINE` = paiement, `IDTIERS` = client) ; **facture** créée automatiquement (une ligne par place : film, salle, date, heure, place, classe) ; ticket et places passés à **payé**.
+- [x] Après le paiement : ouverture de la facture (« Paiement enregistré… »). Facture : liste, fiche, **page imprimable avec « Exporter en PDF »** (impression du navigateur) contenant la facture, les modes de paiement et **un billet d'entrée par place**.
+- [x] Liste des paiements (client, film, séance, modes « espèce 10 000 + Mobile money 20 000 », montant, facture) et fiche (répartition, liens vers les mouvements de caisse, la facture et le ticket).
+- [x] Fiche réservation : bouton Payer (ticket réservé non expiré) ; pour un ticket payé, liens « Voir le paiement » / « Voir la facture ».
+- [x] Un paiement ne s'annule pas, une facture ne se modifie pas et ne se supprime pas (v1).
+- [x] Refactorisation : création des mouvements de caisse visés regroupée dans `cinema.utils.CinCaisse` (utilisée par l'achat et le paiement).
+- [x] Démo enrichie : ticket payé `CINTKTDEMO06` (espèce + Mobile money), ses 2 entrées de caisse et sa facture `FCaaaa-D0001`.
+- [x] Tests faits par moi : compilation (39 classes, 52 JSP), rendu réel de la page d'impression depuis la base, 24 tests Java du paiement, tous les tests des étapes 1 à 7 (135) sans laisser de données, chaîne complète rejouée depuis zéro (reset → étapes 0 à 7 → démo).
+- [ ] **À tester par toi dans WildFly** (tableau en bas de la section « Étape 7 » de `instruction/CINEMA.md`).
+
+Problèmes découverts et corrigés pendant l'étape :
+
+- **Sources Java en ASCII pur** : le projet compile en ISO-8859-1 (`build.xml`). Un caractère accentué ou spécial écrit en clair dans un `.java` est abîmé à la compilation (un montant « 20 000 » avec espace insécable était refusé ; l'alerte de la servlet photo aurait affiché des caractères cassés). Corrigé, et tous les `.java` du cinéma vérifiés : 0 caractère non-ASCII.
+- **Accents de la base** : l'appli enregistre les accents en entités HTML (`Cin&eacute;ma`). Ma fonction d'échappement `html()` les transformait en `&amp;eacute;` (affichage « Cin&eacute;ma » à l'écran) : corrigée dans les 8 pages concernées (elle garde les entités valides et neutralise le reste).
 
 ### Étape 8 : Consultation client et suivi
 
