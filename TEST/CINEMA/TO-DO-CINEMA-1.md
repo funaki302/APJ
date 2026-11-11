@@ -44,7 +44,7 @@ Film ──► Diffusion (film + salle + date/heure)
 | Fichiers intouchables | `apresTarif.jsp` et `apresMultiple.jsp` ne sont **jamais** modifiés. Si besoin d'un traitement spécial : page relais `cinema/.../apres-xxx.jsp` puis renvoi vers `apresTarif.jsp`. |
 | Logique | Dans les classes Java (`controler`, `createObject`, `validerObject`, surcharges + appel de `super`), jamais seulement dans la JSP. Pas de `commit()` au milieu d'un visa. |
 | Données | **Aucun accent** dans les données créées par les scripts (départ, démo, tests) ni dans les libellés générés et enregistrés en base (décision du 11/11/2026). Les accents restent permis dans le texte d'interface. |
-| Livraison | **Une seule fois, à la fin de toutes les étapes** (décision du 11/11/2026) : copie de tous les fichiers du module dans `TEST/CINEMA/` (en gardant l'arborescence `arbiochem-ejb/…`, `arbiochem-war/…`, `data/…`) + un `README.md` global. Pendant les étapes : seulement cocher ce TO-DO et tenir `instruction/CINEMA.md` à jour. |
+| Livraison | **Une seule fois, à la fin de toutes les étapes** (décision du 11/11/2026) : copie de tous les fichiers du module dans `TEST/CINEMA/ETAPE-1-9/` (en gardant l'arborescence `arbiochem-ejb/…`, `arbiochem-war/…`, `data/…`) + un `README.md` global. Pendant les étapes : seulement cocher ce TO-DO et tenir `instruction/CINEMA.md` à jour. |
 
 Conventions APJ reprises de l'existant : `ID VARCHAR2`, `ETAT NUMBER` (1 = créé, 11 = visé/validé, 0 = annulé) à la place d'un champ texte `statut`, `DATY` pour les dates, classes `*Lib` / `*Cpl` pour lire les vues d'affichage.
 
@@ -98,9 +98,9 @@ Vues principales :
 
 ## 5. Étapes
 
-Chaque étape se termine par : compilation (`ant -f build.xml deploy`), script SQL joué, test dans WildFly. La livraison dans `TEST/CINEMA/` se fait une seule fois, à l'étape 9.
+Chaque étape se termine par : compilation (`ant -f build.xml deploy`), script SQL joué, test dans WildFly. La livraison dans `TEST/CINEMA/ETAPE-1-9/` se fait une seule fois, à l'étape 9.
 
-### Étape 0 : Socle du module — ✅ FAIT (11/11/2026, livraison `TEST/CINEMA/ETAPE-0/`)
+### Étape 0 : Socle du module — ✅ FAIT (11/11/2026, livraison regroupée dans `TEST/CINEMA/ETAPE-1-9/`)
 
 - [x] Créer le package `arbiochem-ejb/src/java/cinema/` + sous-packages `salle`, `film`, `achat`, `diffusion`, `reservation`, `paiement`, `utils` (un `package-info.java` dans chacun décrit son contenu).
 - [x] Créer le dossier `arbiochem-war/web/pages/cinema/` + sous-dossiers `salle/`, `film/`, `achat/`, `diffusion/`, `reservation/`, `paiement/`, `facture/`, `client/`, `inc/`.
@@ -113,7 +113,7 @@ Chaque étape se termine par : compilation (`ant -f build.xml deploy`), script S
 - [x] Créer `instruction/CINEMA.md`.
 - [ ] **À tester par toi dans WildFly** : `ant -f build.xml deploy`, se déconnecter / reconnecter, vérifier que **Cinéma** est en haut du menu et que **Accueil cinéma** affiche les cartes.
 
-### Étape 1 : Référentiels — ✅ FAIT (11/11/2026, livraison `TEST/CINEMA/ETAPE-1/`)
+### Étape 1 : Référentiels — ✅ FAIT (11/11/2026, livraison regroupée dans `TEST/CINEMA/ETAPE-1-9/`)
 
 - [x] `data/cinema/etape-1-referentiels.sql` : tables `CIN_CINEMA`, `CIN_CLASSE_PLACE`, `CIN_CATEGORIE_FILM`, `CIN_ACTEUR`, `CIN_PARAMETRE` (ID, CODE, VALEUR, DESCE) + séquences `SEQ_CIN_*` + fonctions `GETSEQCIN*` + vues `CIN_CINEMA_LIB`, `CIN_CLASSE_PLACE_LIB`, `CIN_CATEGORIE_FILM_LIB` (libellé de l'état). Joué sur la base locale.
 - [x] Données initiales : 1 cinéma (« Cinéma principal », Antananarivo), 3 classes (Standard 10 000 Ar jaune, Moyen 15 000 Ar vert, Premium 20 000 Ar rouge — **prix à ajuster dans l'appli**), 7 catégories, paramètre `DELAI_EXPIRATION_MIN` = **30**.
@@ -122,14 +122,14 @@ Chaque étape se termine par : compilation (`ant -f build.xml deploy`), script S
 - [x] Contrôles (Java) : libellé / nom obligatoire, **pas de doublon** (sans tenir compte des majuscules), prix de classe > 0, couleur au format `#RRGGBB`, état Actif / Inactif, naissance pas dans le futur, délai d'expiration entier ≥ 0, paramètre non supprimable.
 - [x] Menus : **Cinéma → Configurations →** Cinémas / Classes de place / Catégories de film / Acteurs (Saisie, Liste) + Paramètres. Carte « Configurations » sur l'accueil cinéma.
 - [x] Tests faits par moi : compilation Java, compilation des 20 JSP (conversion en Java), 12 tests Java contre la base avec ROLLBACK, scripts rejoués depuis zéro (reset → étape 0 → étape 1).
-- [ ] **À tester par toi dans WildFly** : `ant -f build.xml deploy`, reconnexion, puis saisie / liste / fiche / modification / suppression de chaque référentiel (voir `TEST/CINEMA/ETAPE-1/README.md`).
+- [ ] **À tester par toi dans WildFly** : `ant -f build.xml deploy`, reconnexion, puis saisie / liste / fiche / modification / suppression de chaque référentiel (voir `TEST/CINEMA/ETAPE-1-9/README.md`).
 
 Remarques techniques découvertes pendant l'étape :
 
 - La modification standard (`apresTarif.jsp` → `UserEJB.updateObject`) **n'appelle pas `controlerUpdate`** : les contrôles de modification sont dans une surcharge de `updateToTableWithHisto`.
 - APJ insère **toutes** les colonnes : une colonne vide est enregistrée à NULL même si la table a un `DEFAULT`. `DATE_CREATION` est donc remplie dans `controler`.
 
-### Étape 2 : Salles et places — ✅ FAIT (11/11/2026, livraison `TEST/CINEMA/ETAPE-2/`)
+### Étape 2 : Salles et places — ✅ FAIT (11/11/2026, livraison regroupée dans `TEST/CINEMA/ETAPE-1-9/`)
 
 - [x] `data/cinema/etape-2-salles.sql` : tables `CIN_SALLE`, `CIN_PLACE` (suppression en cascade des places avec la salle) + vues `CIN_SALLE_LIB` (nom du cinéma, places en service), `CIN_PLACE_LIB` (classe, couleur, prix) + menus **Cinéma → Salles → Saisie / Liste**. Joué sur la base locale.
 - [x] `CinSalle` (`ClassMAPTable`, pas `ClassMere` : les places ne se saisissent pas ligne par ligne) : à la création, **génération automatique des places** (`NB_RANGEES` × `NB_COLONNES`, numéros A1, A2…, classe active la moins chère = Standard), dans la même transaction. Capacité = rangées × colonnes, calculée par le Java.
@@ -141,7 +141,7 @@ Remarques techniques découvertes pendant l'étape :
 - [x] `salle-modif.jsp` : nom, cinéma, état. **Structure (rangées / colonnes) non modifiable** après la création (champ en lecture seule + contrôle Java) : supprimer et recréer la salle.
 - [x] Places **hors service** (siège cassé) : grisées sur le plan, à exclure de la réservation à l'étape 6.
 - [x] Tests faits par moi : compilation Java + 26 JSP, 17 tests Java avec ROLLBACK, rendu HTML du plan vérifié, scripts rejoués depuis zéro (reset → étapes 0, 1, 2).
-- [ ] **À tester par toi dans WildFly** (voir `TEST/CINEMA/ETAPE-2/README.md`).
+- [ ] **À tester par toi dans WildFly** (voir `TEST/CINEMA/ETAPE-1-9/README.md`).
 - [x] Fait à l'étape 5 : une salle qui a des diffusions ne peut pas être supprimée (message clair, la passer en Inactive).
 - [x] Fait à l'étape 6 : une place réservée ou payée pour une séance à venir ne peut pas passer hors service.
 
@@ -243,8 +243,8 @@ Problèmes découverts et corrigés pendant l'étape :
 - [x] Cas limites testés : place déjà prise, séance qui chevauche, paiement incomplet refusé, ticket expiré non payable, annulation, deux caisses sur la même place, réinitialisation puis rechargement de la démo.
 - [x] Reste de l'appli non impacté : aucun fichier existant modifié hors du module (seul `dateBuild.txt`, réécrit par le build), aucun objet de la base modifié hors `CIN_*` ; les autres clients, caisses et mouvements de caisse restent identiques après une réinitialisation.
 - [x] `instruction/CINEMA.md` à jour, `cinema-reset.sql` testé, chaîne complète rejouée depuis zéro (reset → étapes 0 à 9 → démo), 180 tests Java des étapes 1 à 9 sans laisser de données.
-- [x] **Livraison unique** dans `TEST/CINEMA/` : tous les fichiers du module (Java, servlet, JSP, scripts `data/cinema/`, démo `WEB-INF/cinema/`, `instruction/CINEMA.md`) + `README.md` global.
-- [ ] **À tester par toi dans WildFly** : `TEST/CINEMA/README.md` (installation complète et parcours de test).
+- [x] **Livraison unique** dans `TEST/CINEMA/ETAPE-1-9/` (tout est dans ce dossier) : tous les fichiers du module (Java, servlet, JSP, scripts `data/cinema/`, démo `WEB-INF/cinema/`, `instruction/CINEMA.md`) + `README.md` global.
+- [ ] **À tester par toi dans WildFly** : `TEST/CINEMA/ETAPE-1-9/README.md` (installation complète et parcours de test).
 
 ---
 

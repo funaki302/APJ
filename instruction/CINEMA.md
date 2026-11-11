@@ -2,7 +2,7 @@
 
 Dernière mise à jour : 11/11/2026 (étape 9 : module terminé)
 
-Plan de travail et décisions : `TEST/CINEMA/TO-DO-CINEMA-1.md`. Livraisons : `TEST/CINEMA/ETAPE-n/`.
+Plan de travail et décisions : `TEST/CINEMA/TO-DO-CINEMA-1.md`. Livraison complète : `TEST/CINEMA/ETAPE-1-9/`.
 
 ---
 
@@ -266,7 +266,7 @@ Tests à faire dans WildFly (après `donnees-demo.sql`) :
 - **Réinitialiser les données** (menu Cinéma, page `cinema/parametre/reinitialisation.jsp` → `apres-reinitialisation.jsp` → `cinema.utils.CinReinitialisation.executer`) : efface tout sauf la configuration, dans l'ordre des clés étrangères, en SQL direct et dans **une seule transaction** (17 étapes, aperçu des quantités avant). Garde : `CIN_CINEMA`, `CIN_CLASSE_PLACE`, `CIN_CATEGORIE_FILM`, `CIN_PARAMETRE`, `CIN_MODE_CAISSE`, la caisse `CAICINEMA`, les menus. Puis remet à 1 la séquence des numéros de facture.
 - **Recharger la démonstration** : même page, option « Réinitialiser puis recharger la démonstration ». Le script lu est `arbiochem-war/web/WEB-INF/cinema/donnees-demo.sql`, exécuté par `cinema.utils.CinScriptSql` (lignes `--`, `SET`, `COMMIT` ignorées ; `;` en fin de ligne ; blocs PL/SQL terminés par `/`). **Ce fichier doit rester identique à `data/cinema/donnees-demo.sql`** (le war ne contient pas le dossier `data/`).
 - **Ce que le module ajoute dans des tables existantes** (rien n'est modifié ni supprimé dans l'existant) : `MENUDYNAMIQUE` (menus `MENDYNCINEMA...`), `USERMENU` (`UMCINEMA01`), `CAISSE` (`CAICINEMA`), `MODEPAIEMENT` (`MPCINMOB`), `CLIENT` (clients de démo `CLICIN...`), `MOUVEMENTCAISSE` et `REPORTCAISSE` (mouvements du cinéma, `IDORIGINE LIKE 'CIN%'` ou caisse `CAICINEMA`). `cinema-reset.sql` retire tout cela.
-- **Recette finale** : scénario complet achat → séance → réservation → paiement multi-mode → facture → caisse → tableau de bord, et cas limites, testés en Java (voir `TEST/CINEMA/README.md` pour le parcours dans l'application).
+- **Recette finale** : scénario complet achat → séance → réservation → paiement multi-mode → facture → caisse → tableau de bord, et cas limites, testés en Java (voir `TEST/CINEMA/ETAPE-1-9/README.md` pour le parcours dans l'application).
 
 ## 6 decies. Limites connues et perspectives
 

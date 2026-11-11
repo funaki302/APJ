@@ -7,7 +7,10 @@ achats de films et de matériel (sortie de caisse), séances (avec calendrier), 
 paiement en une fois avec plusieurs modes (facture automatique + entrées de caisse), clients, tableau de bord,
 réinitialisation des données. **Aucun fichier existant de l'application n'est modifié** : tous les fichiers sont nouveaux.
 
-## Contenu de la livraison (à copier à la même place dans `projet-standard/`)
+## Contenu de la livraison
+
+Tout est dans ce dossier `TEST/CINEMA/ETAPE-1-9/`. Copier son **contenu** (sauf ce README) à la même place dans `projet-standard/`.
+
 
 | Dossier | Contenu |
 |---|---|
@@ -20,7 +23,7 @@ réinitialisation des données. **Aucun fichier existant de l'application n'est 
 
 ## Installation
 
-1. Copier les dossiers ci-dessus dans `projet-standard/`.
+1. Copier les dossiers de `ETAPE-1-9/` (`arbiochem-ejb`, `arbiochem-war`, `data`, `instruction`) dans `projet-standard/`.
 2. Exécuter **dans l'ordre** sur la base Oracle (SQL Developer ou SQL*Plus, en gardant le `SET DEFINE OFF;` du début de chaque script) :
 
    | Ordre | Script | Contenu |
