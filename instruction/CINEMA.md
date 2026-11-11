@@ -1,6 +1,6 @@
 # CINEMA : module de gestion d'un cinéma
 
-Dernière mise à jour : 11/11/2026 (étape 4)
+Dernière mise à jour : 11/11/2026 (étape 5)
 
 Plan de travail et décisions : `TEST/CINEMA/TO-DO-CINEMA-1.md`. Livraisons : `TEST/CINEMA/ETAPE-n/`.
 
@@ -43,6 +43,7 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 | `etape-2-salles.sql` | tables `CIN_SALLE`, `CIN_PLACE`, vues `CIN_SALLE_LIB`, `CIN_PLACE_LIB`, menus Salles |
 | `etape-3-films.sql` | tables `CIN_FILM`, `CIN_FILM_PHOTO`, vue `CIN_FILM_LIB`, menus Films |
 | `etape-4-achats.sql` | tables `CIN_ACHAT`, `CIN_ACHAT_FILLE`, vues `CIN_ACHAT_LIB`, `CIN_ACHAT_FILLE_LIB`, caisse `CAICINEMA`, menus Achats |
+| `etape-5-diffusions.sql` | table `CIN_DIFFUSION`, vue `CIN_DIFFUSION_LIB`, menus Diffusions (saisie, liste, calendrier) |
 | `cinema-reset.sql` | supprime tous les objets `CIN_*` / `SEQ_CIN_*` / `GETSEQCIN*`, les menus `MENDYNCINEMA%`, la caisse `CAICINEMA` avec ses reports et mouvements, et les mouvements de caisse `IDORIGINE LIKE 'CIN%'`. Testé le 11/11/2026. |
 
 ## 4. Avancement
@@ -54,7 +55,7 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 | 2 | Salles et places | fait (11/11/2026) |
 | 3 | Films | fait (11/11/2026) |
 | 4 | Achats → sortie de caisse | fait (11/11/2026) |
-| 5 | Diffusions | à faire |
+| 5 | Diffusions | fait (11/11/2026) |
 | 6 | Réservations | à faire |
 | 7 | Paiement → facture + entrée de caisse | à faire |
 | 8 | Consultation client, tableau de bord | à faire |
@@ -144,6 +145,30 @@ Tests à faire dans WildFly :
 | Autre achat → Annuler | état Annulé, aucun mouvement de caisse |
 | Liste des achats | filtres, total des montants en bas |
 
+## 6 quinquies. Étape 5 : diffusions
+
+| Table | Classe Java | Préfixe id | Pages |
+|---|---|---|---|
+| `CIN_DIFFUSION` (vue `CIN_DIFFUSION_LIB`) | `cinema.diffusion.CinDiffusion` / `CinDiffusionLib` | `CINDIF` | `cinema/diffusion/diffusion-{saisie,liste,fiche,modif,calendrier}.jsp` |
+
+- **Horaire** : `DATY` (jour) + `HEURE` (texte `HH:MM`, contrainte SQL). La vue calcule `DATE_DEBUT`, `DATE_FIN` = début + durée du film, `HEURE_FIN` et le statut (`ETATLIB`) : Annulée (état 0), Terminée (fin passée), En cours, Programmée.
+- **Chevauchement** (`CinDiffusion.verifierChevauchement`) : refus si une autre séance programmée de la même salle vérifie `date_debut < fin` et `date_fin > debut`. Pas de marge de nettoyage en v1 (perspective d'avenir).
+- **Création** : séance dans le futur, film actif, salle active avec au moins une place en service. **Modification / suppression** : refusées si la séance a déjà commencé (`dejaCommencee`). Annuler = état 0 via la modification (le contrôle de chevauchement ne s'applique pas à une annulation).
+- **Calendrier** : `CinDiffusion.getDiffusionsEntre(debut, fin, idCinema, c)` ; paramètre `semaine=AAAA-MM-JJ`.
+- **Protection des suppressions** : `CinSalle.controlerDelete` (salle avec diffusions) et `CinFilm.controlerDelete` (film avec diffusions ou dans un achat).
+
+Tests à faire dans WildFly :
+
+| Écran | À vérifier |
+|---|---|
+| Diffusions → Saisie | film de 2 h, salle A, demain 18:00 → fiche : début 18:00, fin 20:00, plan de la salle |
+| Nouvelle saisie | même salle demain 19:00 → refusée « La salle … est déjà occupée … de 18:00 à 20:00 » ; même salle 20:00 → acceptée ; autre salle 18:30 → acceptée |
+| Saisie dans le passé | refusée « La séance doit être dans le futur » |
+| Fiche → Modifier / annuler | état « Annulée » → la carte apparaît barrée ; le créneau 18:00 redevient libre |
+| Diffusions → Liste | cartes avec affiche, salle, date, « 18:00 – 20:00 (2 h 00) », statut ; filtres |
+| Diffusions → Calendrier | séances de la semaine par jour, couleur par salle, semaine suivante / précédente |
+| Salles → fiche d'une salle avec séances → Supprimer | refusé « Cette salle a des diffusions » |
+
 ## 7. Pièges APJ (à retenir pour les étapes suivantes)
 
 - **Modification** : `apresTarif.jsp` → `UserEJB.updateObject` → `UpdateObject` → `updateToTableWithHisto`. `controlerUpdate` n'est **pas** appelé (seulement par `updateObjectValidation`). Contrôles de modification : surcharger `updateToTableWithHisto(String, Connection)`.
@@ -155,3 +180,4 @@ Tests à faire dans WildFly :
 - **Visa d'une `ClassEtat` / `ClassMere`** : `apresTarif.jsp` (`acte=valider`) → `ValiderObject` recharge l'objet (avec ses filles pour une mère) puis appelle `validerObject(String, Connection)` : c'est la méthode à surcharger. États APJ : créé = 1, visé = 11, annulé = 0.
 - **Annulation** : `annulerObject` appelle `controleAnnule(c)` (et non `controleAnnuler`).
 - **Tables mère / fille** : APJ ne remplit que les colonnes présentes dans la table (pas besoin de `IDUSER`). Donner une colonne `ETAT` à la table fille, car le visa d'une mère vise aussi ses filles.
+- **Suppression APJ = commit** : `ClassMAPTable.deleteToTable` (via `deleteToTableWithHisto`) fait `commit` de toute la transaction, et `deleteToTableWithHisto` fait `rollback` en cas d'erreur. Ne jamais l'appeler au milieu d'un traitement qui doit rester annulable : supprimer en SQL (requête préparée) dans la transaction.

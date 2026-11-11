@@ -92,6 +92,14 @@ public class CinSalle extends ClassMAPTable {
         return super.updateToTableWithHisto(refUser, c);
     }
 
+    @Override
+    public void controlerDelete(Connection c) throws Exception {
+        if (CinUtils.entier(c, "select count(*) from CIN_DIFFUSION where idsalle = ?", id) > 0) {
+            throw new Exception("Cette salle a des diffusions : elle ne peut pas &ecirc;tre supprim&eacute;e (la passer en Inactive)");
+        }
+        super.controlerDelete(c);
+    }
+
     private void verifier(Connection c) throws Exception {
         if (CinUtils.estVide(nom)) throw new Exception("Le nom de la salle est obligatoire");
         if (CinUtils.estVide(idcinema)) throw new Exception("Le cin&eacute;ma de la salle est obligatoire");

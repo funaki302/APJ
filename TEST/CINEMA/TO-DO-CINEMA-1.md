@@ -141,7 +141,8 @@ Remarques techniques découvertes pendant l'étape :
 - [x] Places **hors service** (siège cassé) : grisées sur le plan, à exclure de la réservation à l'étape 6.
 - [x] Tests faits par moi : compilation Java + 26 JSP, 17 tests Java avec ROLLBACK, rendu HTML du plan vérifié, scripts rejoués depuis zéro (reset → étapes 0, 1, 2).
 - [ ] **À tester par toi dans WildFly** (voir `TEST/CINEMA/ETAPE-2/README.md`).
-- [ ] À faire aux étapes 5 / 6 : interdire la suppression d'une salle qui a des diffusions, et la mise hors service d'une place déjà réservée pour une séance à venir.
+- [x] Fait à l'étape 5 : une salle qui a des diffusions ne peut pas être supprimée (message clair, la passer en Inactive).
+- [ ] À faire à l'étape 6 : interdire la mise hors service d'une place déjà réservée pour une séance à venir.
 
 ### Étape 3 : Films — ✅ FAIT (11/11/2026)
 
@@ -176,14 +177,20 @@ Choix et constats de l'étape :
 - Dans la base locale, la vue `V_ETATCAISSE` (solde des caisses) ne compte que les mouvements qui ont un `IDREPORT`, ce qu'aucun mouvement n'a : le solde de l'écran Caisse existant n'est pas fiable. Le tableau de bord cinéma (étape 8) calculera son propre solde à partir de `MOUVEMENTCAISSE`.
 - Pas de page de modification d'un achat en v1 : avant le visa, l'annuler et le ressaisir.
 
-### Étape 5 : Diffusions (séances)
+### Étape 5 : Diffusions (séances) — ✅ FAIT (11/11/2026)
 
-- [ ] Table `CIN_DIFFUSION` + vue `CIN_DIFFUSION_LIB` (heure de fin = heure + durée du film).
-- [ ] Saisie : film, salle, date, heure.
-- [ ] Contrôles dans `controler` : film et salle actifs, date dans le futur, **pas de chevauchement** dans la même salle (début < fin de l'autre et fin > début de l'autre, sans marge entre deux séances en v1).
-- [ ] Liste (maquette « diffusion ») : vignette film, titre, salle, heure (durée), filtres, pagination.
-- [ ] Fiche : infos + nombre de places libres / réservées / payées + bouton « Réserver ».
-- [ ] Vue calendrier des diffusions (semaine / jour) — en dernier dans l'étape.
+- [x] `data/cinema/etape-5-diffusions.sql` : table `CIN_DIFFUSION` (film, salle, date, heure `HH:MM`, état 1 programmée / 0 annulée) + vue `CIN_DIFFUSION_LIB` (film, durée, salle, cinéma, début / fin calculés, places en service, statut Programmée / En cours / Terminée / Annulée) + menus **Cinéma → Diffusions → Saisie / Liste / Calendrier**. Joué sur la base locale.
+- [x] Saisie (`diffusion-saisie.jsp`) : film actif, salle active, date, heure (champ horaire) ; pré-remplissage possible par `idfilm` / `idsalle` dans l'URL.
+- [x] Contrôles (`CinDiffusion`) : film et salle actifs, salle avec au moins une place en service, heure valide (normalisée en HH:MM), **séance dans le futur**, **pas de chevauchement** dans la même salle (début < fin de l'autre et fin > début de l'autre, sans marge ; deux séances qui se touchent sont acceptées ; une séance annulée libère le créneau). Message : « La salle X est déjà occupée le … de 18:00 à 20:00 par « Film » ».
+- [x] Une séance **commencée ou terminée** ne se modifie plus et ne se supprime plus. Annulation = passer l'état à « Annulée » dans la modification.
+- [x] Liste en cartes (maquette « diffusion ») : vignette du film, titre, salle, date, heure début – fin (durée), statut ; filtres date min / max, film, salle, état ; pagination APJ.
+- [x] Fiche : affiche du film, infos, **plan de la salle** (fragment `plan-salle.jspf`), Modifier / annuler, Supprimer ; bouton « Réserver » prévu pour l'étape 6.
+- [x] **Calendrier** de la semaine (`diffusion-calendrier.jsp`) : lundi → dimanche, semaine précédente / suivante, une couleur par salle, séances annulées barrées, jour courant encadré, clic → fiche.
+- [x] Bonus : une salle ou un film qui a des diffusions (ou un film présent dans un achat) ne peut pas être supprimé (message clair au lieu de l'erreur Oracle ORA-02292).
+- [x] Tests faits par moi : compilation (23 classes, 38 JSP), 21 tests Java + 2 tests de suppression, tous les tests des étapes 1 à 5 lancés deux fois de suite sans laisser de données, scripts rejoués depuis zéro (étapes 0 à 5).
+- [ ] **À tester par toi dans WildFly** (tableau en bas de la section « Étape 5 » de `instruction/CINEMA.md`).
+
+Problème découvert : `ClassMAPTable.deleteToTable` (appelé par `deleteToTableWithHisto`) fait un **`commit`** de toute la transaction. Mes tests qui finissaient par une suppression APJ avaient donc laissé des données de test en base (une salle, deux acteurs « Rabe Hery », la catégorie Drame inactive) : nettoyées, tests corrigés. Dans l'appli ce n'est pas gênant (une suppression via `apresTarif.jsp` est seule dans sa transaction), mais il ne faut **jamais** appeler une suppression APJ au milieu d'un traitement qui doit pouvoir être annulé (à retenir pour l'étape 6).
 
 ### Étape 6 : Réservation (ticket)
 

@@ -61,6 +61,17 @@ public class CinFilm extends ClassMAPTable {
         return super.updateToTableWithHisto(refUser, c);
     }
 
+    @Override
+    public void controlerDelete(Connection c) throws Exception {
+        if (CinUtils.entier(c, "select count(*) from CIN_DIFFUSION where idfilm = ?", id) > 0) {
+            throw new Exception("Ce film a des diffusions : il ne peut pas &ecirc;tre supprim&eacute; (le passer en Inactif)");
+        }
+        if (CinUtils.entier(c, "select count(*) from CIN_ACHAT_FILLE where idfilm = ?", id) > 0) {
+            throw new Exception("Ce film figure dans un achat : il ne peut pas &ecirc;tre supprim&eacute; (le passer en Inactif)");
+        }
+        super.controlerDelete(c);
+    }
+
     private void verifier(Connection c) throws Exception {
         if (CinUtils.estVide(titre)) throw new Exception("Le titre du film est obligatoire");
         if (CinUtils.estVide(idcategorie)) throw new Exception("La cat&eacute;gorie du film est obligatoire");
