@@ -77,6 +77,34 @@ public class CinFilm extends ClassMAPTable {
         CinUtils.verifierEtat(etat);
     }
 
+    /**
+     * Films actifs tries par titre (listes deroulantes : achat, diffusion).
+     */
+    public static CinFilm[] getFilmsActifs(Connection c) throws Exception {
+        boolean canClose = false;
+        try {
+            if (c == null) {
+                c = new utilitaire.UtilDB().GetConn();
+                canClose = true;
+            }
+            java.util.List<CinFilm> films = new java.util.ArrayList<CinFilm>();
+            try (java.sql.PreparedStatement ps = c.prepareStatement("select id, titre, duree, pa from CIN_FILM where etat = 1 order by upper(titre)");
+                 java.sql.ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    CinFilm f = new CinFilm();
+                    f.setId(rs.getString("id"));
+                    f.titre = rs.getString("titre");
+                    f.setDuree(rs.getInt("duree"));
+                    f.setPa(rs.getDouble("pa"));
+                    films.add(f);
+                }
+            }
+            return films.toArray(new CinFilm[0]);
+        } finally {
+            if (canClose) c.close();
+        }
+    }
+
     public String getId() {
         return id;
     }

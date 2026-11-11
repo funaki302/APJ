@@ -1,12 +1,16 @@
 -- =====================================================================
 -- CINEMA - Suppression complete du module (retour a l'etat d'avant le cinema)
 -- Supprime : toutes les vues, tables, sequences et fonctions dont le nom commence par CIN_,
---            GETSEQCIN ou SEQ_CIN_, et les menus MENDYNCINEMA%.
--- Ne touche a rien d'autre (CLIENT, CAISSE, MOUVEMENTCAISSE... sont conserves).
--- ATTENTION : les mouvements de caisse generes par le cinema (IDORIGINE = id cinema)
--- restent dans MOUVEMENTCAISSE ; les supprimer a la main si besoin (requete en bas).
+--            GETSEQCIN ou SEQ_CIN_, les menus MENDYNCINEMA%,
+--            la caisse CAICINEMA (etape 4) avec ses reports et mouvements,
+--            et les mouvements de caisse generes par le cinema (IDORIGINE LIKE 'CIN%').
+-- Ne touche a rien d'autre (CLIENT, les autres caisses et leurs mouvements sont conserves).
 -- Complete a chaque etape si un objet ne suit pas ces prefixes.
 -- =====================================================================
+
+-- Etape 4 : mouvements et reports de la caisse du cinema (avant de supprimer la caisse)
+DELETE FROM MOUVEMENTCAISSE WHERE IDORIGINE LIKE 'CIN%' OR IDCAISSE = 'CAICINEMA';
+DELETE FROM REPORTCAISSE WHERE IDCAISSE = 'CAICINEMA';
 
 BEGIN
     FOR o IN (SELECT OBJECT_NAME, OBJECT_TYPE FROM USER_OBJECTS
@@ -27,7 +31,5 @@ END;
 DELETE FROM USERMENU WHERE IDMENU LIKE 'MENDYNCINEMA%';
 DELETE FROM MENUDYNAMIQUE WHERE ID LIKE 'MENDYNCINEMA%' AND NIVEAU > 1;
 DELETE FROM MENUDYNAMIQUE WHERE ID LIKE 'MENDYNCINEMA%';
+DELETE FROM CAISSE WHERE ID = 'CAICINEMA';
 COMMIT;
-
--- Mouvements de caisse du cinema (a partir de l'etape 4) :
--- SELECT * FROM MOUVEMENTCAISSE WHERE IDORIGINE LIKE 'CIN%';

@@ -1,6 +1,6 @@
 # CINEMA : module de gestion d'un cinéma
 
-Dernière mise à jour : 11/11/2026 (étape 3)
+Dernière mise à jour : 11/11/2026 (étape 4)
 
 Plan de travail et décisions : `TEST/CINEMA/TO-DO-CINEMA-1.md`. Livraisons : `TEST/CINEMA/ETAPE-n/`.
 
@@ -42,7 +42,8 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 | `etape-1-referentiels.sql` | référentiels : tables `CIN_CINEMA`, `CIN_CLASSE_PLACE`, `CIN_CATEGORIE_FILM`, `CIN_ACTEUR`, `CIN_PARAMETRE`, vues `*_LIB`, données initiales, menus Configurations |
 | `etape-2-salles.sql` | tables `CIN_SALLE`, `CIN_PLACE`, vues `CIN_SALLE_LIB`, `CIN_PLACE_LIB`, menus Salles |
 | `etape-3-films.sql` | tables `CIN_FILM`, `CIN_FILM_PHOTO`, vue `CIN_FILM_LIB`, menus Films |
-| `cinema-reset.sql` | supprime tous les objets `CIN_*` / `SEQ_CIN_*` / `GETSEQCIN*` et les menus `MENDYNCINEMA%`. Testé le 11/11/2026. |
+| `etape-4-achats.sql` | tables `CIN_ACHAT`, `CIN_ACHAT_FILLE`, vues `CIN_ACHAT_LIB`, `CIN_ACHAT_FILLE_LIB`, caisse `CAICINEMA`, menus Achats |
+| `cinema-reset.sql` | supprime tous les objets `CIN_*` / `SEQ_CIN_*` / `GETSEQCIN*`, les menus `MENDYNCINEMA%`, la caisse `CAICINEMA` avec ses reports et mouvements, et les mouvements de caisse `IDORIGINE LIKE 'CIN%'`. Testé le 11/11/2026. |
 
 ## 4. Avancement
 
@@ -52,7 +53,7 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 | 1 | Référentiels | fait (11/11/2026) |
 | 2 | Salles et places | fait (11/11/2026) |
 | 3 | Films | fait (11/11/2026) |
-| 4 | Achats → sortie de caisse | à faire |
+| 4 | Achats → sortie de caisse | fait (11/11/2026) |
 | 5 | Diffusions | à faire |
 | 6 | Réservations | à faire |
 | 7 | Paiement → facture + entrée de caisse | à faire |
@@ -117,6 +118,32 @@ Tests à faire dans WildFly :
 | Films → Liste | cartes avec vignette, « Titre (acteur) », catégorie, « 2 h 05 », Détail ; filtres et pagination |
 | Fiche → Modifier | durée 700 → refusée ; catégorie inactive non proposée |
 
+## 6 quater. Étape 4 : achats → sortie de caisse
+
+| Table | Classe Java | Préfixe id | Pages |
+|---|---|---|---|
+| `CIN_ACHAT` (vue `CIN_ACHAT_LIB`) | `cinema.achat.CinAchat` (`ClassMere`) / `CinAchatLib` | `CINACH` | `cinema/achat/achat-{saisie,liste,fiche}.jsp` |
+| `CIN_ACHAT_FILLE` (vue `CIN_ACHAT_FILLE_LIB`) | `cinema.achat.CinAchatFille` (`ClassFille`, liaison `idachat`) / `CinAchatFilleLib` | `CINACF` | lignes de la saisie / fiche |
+| `CAISSE` (existante) | — | `CAICINEMA` | caisse « Caisse Cinéma » ajoutée par le script |
+
+- **Cycle** : saisie → état 1 ; **Viser** (`apresTarif.jsp`, `acte=valider`) → état 11 + sortie de caisse ; **Annuler** (`acte=annuler`) → état 0, seulement avant le visa (`controleAnnule`). Un achat visé ne se supprime pas (`controlerDelete`).
+- **Saisie** : `CinAchat.createObject` retire les lignes vides, contrôle chaque ligne (`CinAchatFille.verifier` : film existant pour FILM, désignation pour MATERIEL, quantité > 0, prix ≥ 0) et calcule `MONTANT` = Σ quantité × prix.
+- **Visa** : `CinAchat.validerObject` → `super.validerObject` (état 11, lignes comprises) → `genererSortieCaisse` : `MvtCaisse` avec `DEBIT` = montant, `IDCAISSE`, `IDMODEPAIEMENT`, `IDORIGINE` = id de l'achat, `IDDEVISE` = AR, puis état 11 ; id gardé dans `CIN_ACHAT.IDMVTCAISSE`. Ensuite `CIN_FILM.PA` = prix de la ligne pour les films achetés. Tout est dans la transaction du visa.
+- **Pas d'écriture comptable générale** (choix v1) : `MvtCaisse.validerObject` n'est pas appelé (il exige un tiers avec compte comptable et fait journal + lettrage).
+- **Retrouver les sorties de caisse du cinéma** : `SELECT * FROM MOUVEMENTCAISSE WHERE IDORIGINE LIKE 'CINACH%'`.
+
+Tests à faire dans WildFly :
+
+| Écran | À vérifier |
+|---|---|
+| Achats → Saisie | fournisseur, Caisse Cinéma et espèce proposées par défaut ; ligne 1 : choisir un film (le type passe à Film), prix 2 000 000 ; ligne 2 : Matériel « Fauteuils », 10 × 150 000 ; le total affiche 3 500 000 → Enregistrer → fiche, état Créé |
+| Saisie sans aucune ligne remplie | refusée « Ajoutez au moins une ligne » |
+| Fiche → Viser | confirmation « 3 500 000 Ar vont sortir de la caisse… » → état Visé, lien « Voir le mouvement de caisse » (débit 3 500 000 sur Caisse Cinéma) |
+| Fiche du film acheté | le prix d'achat vaut 2 000 000 |
+| Achat visé | plus de bouton Viser / Annuler |
+| Autre achat → Annuler | état Annulé, aucun mouvement de caisse |
+| Liste des achats | filtres, total des montants en bas |
+
 ## 7. Pièges APJ (à retenir pour les étapes suivantes)
 
 - **Modification** : `apresTarif.jsp` → `UserEJB.updateObject` → `UpdateObject` → `updateToTableWithHisto`. `controlerUpdate` n'est **pas** appelé (seulement par `updateObjectValidation`). Contrôles de modification : surcharger `updateToTableWithHisto(String, Connection)`.
@@ -125,3 +152,6 @@ Tests à faire dans WildFly :
 - **Menu** : un menu de niveau 1 doit avoir une ligne `USERMENU` autorisée (voir §5).
 - **Scripts SQL** : `SET DEFINE OFF;` à cause des entités HTML.
 - **Pilote Oracle ancien** (`ojdbc6-11.jar`, classes `oracle.jdbc.dbaccess`) : pour un BLOB, ne pas utiliser `setBinaryStream` / `setBytes` / `getBytes`. Écrire avec `EMPTY_BLOB()` + `SELECT ... FOR UPDATE` + `getBinaryOutputStream()`, lire avec `getBlob()` (voir `CinFilmPhoto`).
+- **Visa d'une `ClassEtat` / `ClassMere`** : `apresTarif.jsp` (`acte=valider`) → `ValiderObject` recharge l'objet (avec ses filles pour une mère) puis appelle `validerObject(String, Connection)` : c'est la méthode à surcharger. États APJ : créé = 1, visé = 11, annulé = 0.
+- **Annulation** : `annulerObject` appelle `controleAnnule(c)` (et non `controleAnnuler`).
+- **Tables mère / fille** : APJ ne remplit que les colonnes présentes dans la table (pas besoin de `IDUSER`). Donner une colonne `ETAT` à la table fille, car le visa d'une mère vise aussi ses filles.

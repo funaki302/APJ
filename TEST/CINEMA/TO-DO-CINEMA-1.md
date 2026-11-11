@@ -158,13 +158,23 @@ Remarques techniques découvertes pendant l'étape :
 
 Problème découvert : le pilote Oracle du projet (`ojdbc6-11.jar`) est très ancien. `setBinaryStream` / `setBytes` échouent au-delà de quelques Ko (ORA-01460) et `getBytes` sur un BLOB renvoie le pointeur au lieu du contenu. `CinFilmPhoto` écrit donc avec `EMPTY_BLOB()` + `SELECT ... FOR UPDATE` + `getBinaryOutputStream()`, et lit avec `getBlob()`.
 
-### Étape 4 : Achats (films et matériel) → sortie de caisse
+### Étape 4 : Achats (films et matériel) → sortie de caisse — ✅ FAIT (11/11/2026)
 
-- [ ] Tables `CIN_ACHAT` + `CIN_ACHAT_FILLE` (+ vue `CIN_ACHAT_LIB`).
-- [ ] Saisie mère/fille (`PageInsertMultiple` → `apresMultiple.jsp`) : lignes « film » (choix d'un film existant, ou création du film depuis l'achat) et lignes « matériel » (chaises, projecteur…).
-- [ ] **Au visa** (`validerObject`, dans la même transaction) : création d'un `MvtCaisse` **DEBIT** = montant, `IDCAISSE` = caisse choisie, `IDORIGINE` = id de l'achat, désignation « Achat cinéma … ».
-- [ ] **Pas de contrôle de solde** : l'achat d'un film est toujours accepté, même si la caisse passe en négatif.
-- [ ] Liste / fiche de l'achat avec le mouvement de caisse généré.
+- [x] `data/cinema/etape-4-achats.sql` : tables `CIN_ACHAT` (mère) et `CIN_ACHAT_FILLE` (lignes FILM / MATERIEL) + vues `CIN_ACHAT_LIB`, `CIN_ACHAT_FILLE_LIB` + **caisse `CAICINEMA` « Caisse Cinéma »** ajoutée dans la table `CAISSE` + menus **Cinéma → Achats → Saisie / Liste**. Joué sur la base locale.
+- [x] Saisie mère / lignes (`PageInsertMultiple` → `apresMultiple.jsp`) : date, fournisseur, caisse (Caisse Cinéma par défaut, toutes les caisses actives proposées), mode de paiement (espèce par défaut), remarque ; 8 lignes (type, film, désignation, quantité, prix unitaire), total en direct. Les lignes vides sont ignorées. Un film doit exister avant d'être acheté.
+- [x] **Au visa** (`CinAchat.validerObject`, même transaction) : achat à l'état 11, **mouvement de caisse visé** dans `MOUVEMENTCAISSE` (DEBIT = montant, caisse, mode, `IDORIGINE` = id de l'achat), id du mouvement gardé dans `CIN_ACHAT.IDMVTCAISSE`, et **le PA des films achetés prend le prix de la ligne**.
+- [x] **Pas de contrôle de solde** : l'achat est toujours accepté (décision).
+- [x] Annulation (état 0) possible seulement avant le visa ; un achat visé ne peut être ni annulé ni supprimé, ni générer deux sorties de caisse.
+- [x] Liste des achats (filtres date, fournisseur, caisse, montant, état ; total des montants) et fiche (lignes, boutons Viser / Annuler, lien vers le mouvement de caisse).
+- [x] Tests faits par moi : compilation (21 classes, 33 JSP), 18 tests Java avec ROLLBACK (dont le visa réel avec `MvtCaisse`), scripts rejoués depuis zéro (étapes 0 à 4, la suppression nettoie aussi la Caisse Cinéma), tests des étapes 1 à 3 relancés.
+- [ ] **À tester par toi dans WildFly** (tableau en bas de la section « Étape 4 » de `instruction/CINEMA.md`).
+
+Choix et constats de l'étape :
+
+- La sortie de caisse est un mouvement **visé dans `MOUVEMENTCAISSE` sans écriture comptable générale** : `MvtCaisse.validerObject` n'est pas appelé, car il exige un tiers comptable (fournisseur avec compte 401…) et lance journal + lettrage. La comptabilité complète pourra être ajoutée plus tard si besoin.
+- La première sortie d'une caisse sans report crée automatiquement un report de caisse (comportement standard de `MvtCaisse.createObject`).
+- Dans la base locale, la vue `V_ETATCAISSE` (solde des caisses) ne compte que les mouvements qui ont un `IDREPORT`, ce qu'aucun mouvement n'a : le solde de l'écran Caisse existant n'est pas fiable. Le tableau de bord cinéma (étape 8) calculera son propre solde à partir de `MOUVEMENTCAISSE`.
+- Pas de page de modification d'un achat en v1 : avant le visa, l'annuler et le ressaisir.
 
 ### Étape 5 : Diffusions (séances)
 
