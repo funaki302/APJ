@@ -125,7 +125,7 @@ public class CinAchat extends ClassMere {
         if (!CinUtils.estVide(CinUtils.valeur(c, "select idmvtcaisse from CIN_ACHAT where id = ?", id))) {
             throw new Exception("La sortie de caisse de cet achat existe d&eacute;j&agrave;");
         }
-        MvtCaisse mvt = cinema.utils.CinCaisse.creerMouvementVise("Achat cin&eacute;ma " + id + " - " + fournisseur, idcaisse, daty,
+        MvtCaisse mvt = cinema.utils.CinCaisse.creerMouvementVise("Achat cinema " + id + " - " + fournisseur, idcaisse, daty,
                 montant, 0, idmodepaiement, id, null, refUser, c);
         try (PreparedStatement ps = c.prepareStatement("update CIN_ACHAT set idmvtcaisse = ? where id = ?")) {
             ps.setString(1, mvt.getId());

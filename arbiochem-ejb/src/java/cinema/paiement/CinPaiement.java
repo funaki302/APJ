@@ -159,7 +159,7 @@ public class CinPaiement extends ClassMere {
         String nomClient = CinUtils.valeur(c, "select nom from CLIENT where id = ?", idClient);
         for (ClassFille f : lignes) {
             CinPaiementDetail d = (CinPaiementDetail) f;
-            MvtCaisse mvt = CinCaisse.creerMouvementVise("Ticket cin&eacute;ma " + idTicket + " - " + nomClient, d.getIdcaisse(), aujourdhui,
+            MvtCaisse mvt = CinCaisse.creerMouvementVise("Ticket cinema " + idTicket + " - " + nomClient, d.getIdcaisse(), aujourdhui,
                     0, d.getMontant(), d.getIdmodepaiement(), p.getId(), idClient, refUser, c);
             d.setIdmvtcaisse(mvt.getId());
             try (PreparedStatement ps = c.prepareStatement("update CIN_PAIEMENT_DETAIL set idmvtcaisse = ? where id = ?")) {

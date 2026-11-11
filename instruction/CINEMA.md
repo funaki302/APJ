@@ -22,7 +22,7 @@ Le cinéma est un module **séparé** du reste de l'ERP : rien de l'existant n'e
 
 | Partie | Emplacement |
 |---|---|
-| Servlets | `arbiochem-war/src/java/cinema/servlet/` (`@WebServlet`, rien à déclarer dans `web.xml`) : `/cinema/film-photo`, `/cinema/clients` |
+| Servlets | `arbiochem-war/src/java/cinema/servlet/` (`@WebServlet`, rien à déclarer dans `web.xml`) : `/cinema/film-photo` |
 | Java | `arbiochem-ejb/src/java/cinema/` : `salle`, `film`, `achat`, `diffusion`, `reservation`, `paiement` (paiement + facture), `utils` |
 | JSP | `arbiochem-war/web/pages/cinema/` : `salle/`, `film/`, `achat/`, `diffusion/`, `reservation/`, `paiement/`, `facture/`, `client/`, `inc/` (fragments) |
 | SQL | `data/cinema/` : `etape-n-*.sql` (à jouer dans l'ordre) et `cinema-reset.sql` |
@@ -31,6 +31,10 @@ Le cinéma est un module **séparé** du reste de l'ERP : rien de l'existant n'e
 | Menu | racine `MENDYNCINEMA` (niveau 1, rang 0 = tout en haut), sous-menus `MENDYNCINEMAnn` |
 
 Règles : `apresTarif.jsp` et `apresMultiple.jsp` ne sont jamais modifiés ; la logique est dans les classes Java ; JSP en UTF-8.
+
+**Données sans accents** (décision du 11/11/2026) : toutes les données créées par les scripts (données de départ, données de démonstration, données de test) et les libellés générés par le Java et enregistrés en base (désignations des mouvements de caisse, lignes de facture…) s'écrivent **sans accent et sans entité HTML** : « Cinema principal », « Comedie », « Nuit a Tana », « Achat cinema … ». Les accents restent permis dans le texte d'interface (pages, menus, messages d'erreur, libellés d'état calculés par les vues).
+
+**Listes et champs standard** : les listes utilisent le tableau APJ (`pr.getTableau()`), jamais un affichage fait main après `getTableauRecap()`. Les champs de saisie : utiliser les champs APJ comme les autres pages de l'appli (ex. client : `setPageAppelComplete("client.Client", "id", "Client")` + `setPageAppelInsert("client/client-saisie.jsp", ...)`), plutôt que des recherches faites à la main.
 
 ## 3. Scripts SQL
 
@@ -109,7 +113,7 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 
 - **Photo** : stockée en base (BLOB), une par film, supprimée avec le film. JPG / PNG / WEBP reconnus sur les premiers octets du fichier (un `.jpg` qui n'est pas une image est refusé), 2 Mo maximum.
 - **Servlet** `cinema.servlet.CinFilmPhotoServlet` (`/cinema/film-photo`, dans `arbiochem-war`) : `GET ?id=` renvoie l'image ou un dessin « Pas de photo » ; `POST` multipart (`idfilm` + `photo`, ou `idfilm` + `action=supprimer`) enregistre puis revient à la fiche. Réservée aux utilisateurs connectés.
-- **Liste en cartes** : `film-liste.jsp` garde le formulaire de recherche et la pagination de `PageRecherche` mais affiche `pr.getListe()` en cartes au lieu du tableau.
+- **Liste** : `film-liste.jsp` utilise le tableau APJ standard (`pr.getTableau()`), comme toutes les listes de l'appli ; la photo se voit sur la fiche. (Une première version en cartes faites main a été abandonnée le 11/11/2026 : placée après le récapitulatif de `PageRecherche`, elle s'affichait écrasée sur le côté.)
 - **Durée** saisie en minutes, affichée « 2 h 05 » (`DUREELIB`).
 
 Tests à faire dans WildFly :
@@ -119,7 +123,7 @@ Tests à faire dans WildFly :
 | Films → Saisie | titre, catégorie, acteur, 125 min, PA → la fiche s'ouvre avec « Pas de photo » |
 | Fiche → Ajouter une photo | choisir un JPG ou PNG → l'affiche apparaît ; « Changer la photo » la remplace ; « Supprimer la photo » remet « Pas de photo » |
 | Fiche → photo refusée | un PDF ou un fichier renommé en .jpg → message « Format non accepté » ; une image de plus de 2 Mo → « L'image dépasse 2 Mo » |
-| Films → Liste | cartes avec vignette, « Titre (acteur) », catégorie, « 2 h 05 », Détail ; filtres et pagination |
+| Films → Liste | tableau standard : titre, acteur, catégorie, « 2 h 05 », prix d'achat, état ; clic sur l'ID → fiche ; filtres et pagination |
 | Fiche → Modifier | durée 700 → refusée ; catégorie inactive non proposée |
 
 ## 6 quater. Étape 4 : achats → sortie de caisse
@@ -168,7 +172,7 @@ Tests à faire dans WildFly :
 | Nouvelle saisie | même salle demain 19:00 → refusée « La salle … est déjà occupée … de 18:00 à 20:00 » ; même salle 20:00 → acceptée ; autre salle 18:30 → acceptée |
 | Saisie dans le passé | refusée « La séance doit être dans le futur » |
 | Fiche → Modifier / annuler | état « Annulée » → la carte apparaît barrée ; le créneau 18:00 redevient libre |
-| Diffusions → Liste | cartes avec affiche, salle, date, « 18:00 – 20:00 (2 h 00) », statut ; filtres |
+| Diffusions → Liste | tableau standard : film, salle, date, début, fin, durée, places, statut ; clic sur l'ID → fiche ; filtres |
 | Diffusions → Calendrier | séances de la semaine par jour, couleur par salle, semaine suivante / précédente |
 | Salles → fiche d'une salle avec séances → Supprimer | refusé « Cette salle a des diffusions » |
 
@@ -185,7 +189,7 @@ Tests à faire dans WildFly :
 - **Réservation ouverte** (`CinTicket.reservationOuverte`) : séance programmée et `SYSDATE <= début − délai`. Elle ferme au moment où un ticket non payé expirerait.
 - **Annuler** : `apresTarif.jsp` `acte=annuler` → `controleAnnule` (refus si payé ou déjà annulé). Pas de suppression de ticket. `validerObject` refuse : le passage à « payé » se fera par le paiement (étape 7).
 - **Plan d'une séance** : `CinTicket.getPlacesDiffusion(idDiffusion, c)` donne des `CinPlaceDiffusion` au fragment `plan-salle.jspf`, qui barre (✕) les places réservées / payées et ajoute `data-statut`, `data-prix`, `data-numero`. `request.setAttribute("cinTicketCourant", id)` encadre les places d'un ticket.
-- **Recherche de client** : servlet `/cinema/clients?q=` (JSON, 15 résultats, nom / téléphone / id). Création d'un client : page client existante (`client/client-saisie.jsp`).
+- **Client** : champ APJ standard, comme les autres saisies de l'appli (`PageInsert` sur `CinTicket`, champ `idclient` avec `setPageAppelComplete("client.Client", "id", "Client")` et bouton « + » `setPageAppelInsert("client/client-saisie.jsp", "idclient;idclientlibelle", "id;nom")`). La page est en deux colonnes : séance + places choisies + client à gauche, plan à droite. (L'ancienne servlet `/cinema/clients` a été supprimée.)
 - **Protections ajoutées** : `CinDiffusion` (pas de modification / annulation avec réservations actives, pas de suppression avec tickets), `CinSalle.modifierPlaces` (pas de mise hors service d'une place réservée pour une séance à venir).
 
 Tests à faire dans WildFly (après `donnees-demo.sql`) :
@@ -193,7 +197,7 @@ Tests à faire dans WildFly (après `donnees-demo.sql`) :
 | Écran | À vérifier |
 |---|---|
 | Diffusions → fiche « Le Lémurien d'or » (demain 18:00) | plan : C5, C6, F4-F6 barrées ✕, F10 hachurée ; légende « Réservée (5) » ; bouton « Réserver des places » |
-| Réserver des places | rechercher « raz » → Razafy Nirina ; cliquer A1 et D3 → « A1, D3 · Total 25 000 Ar » ; Valider → fiche du ticket, places encadrées sur le plan, « à payer avant le ... 17:30 » |
+| Réserver des places | champ Client : taper « raz » → Razafy Nirina (même recherche que sur les autres pages ; « + » pour créer un client) ; cliquer A1 et D3 → « A1, D3 · Total 25 000 Ar » ; Valider → fiche du ticket, places encadrées sur le plan, « à payer avant le ... 17:30 » |
 | Réserver une place barrée | impossible (le clic ne fait rien) |
 | Deux onglets sur la même séance | réserver la même place dans les deux : le 2e reçoit « La place ... vient d'être prise » |
 | Réservations → Liste | 5 tickets de démo : Réservé ×3 (+ le vôtre), Annulé, **Expiré** (séance « Rire en famille » dans 20 min) ; filtres |

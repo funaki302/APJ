@@ -16,7 +16,7 @@ SET DEFINE OFF;
 -- Caisse du cinema (meme parametrage que les caisses especes existantes : type TCA003, categorie CTC003)
 INSERT INTO CAISSE (ID, VAL, DESCE, IDTYPECAISSE, IDPOINT, IDPOMPISTE, ETAT, IDCATEGORIECAISSE, COMPTE,
                     IDMAGASIN, IDDEVISE, IDTYPEBANQUE, ESTRIB, ACTIF)
-VALUES ('CAICINEMA', 'Caisse Cin&eacute;ma', 'Caisse du cin&eacute;ma', 'TCA003', 'PNT000084', NULL, 11, 'CTC003', NULL,
+VALUES ('CAICINEMA', 'Caisse Cinema', 'Caisse du cinema', 'TCA003', 'PNT000084', NULL, 11, 'CTC003', NULL,
         NULL, 'AR', NULL, 0, 1);
 
 CREATE TABLE CIN_ACHAT (

@@ -5,6 +5,7 @@
 -- Donnees initiales + menus Cinema > Configurations.
 -- Prerequis : etape-0-menu.sql. Se reconnecter apres execution (menu en session).
 -- ETAT des referentiels : 1 = actif, 0 = inactif.
+-- Donnees sans accents (regle du projet pour les donnees creees par les scripts).
 -- =====================================================================
 
 SET DEFINE OFF;
@@ -137,7 +138,7 @@ FROM CIN_CATEGORIE_FILM c;
 -- Donnees initiales (modifiables ensuite dans l'application)
 -- ---------------------------------------------------------------------
 INSERT INTO CIN_CINEMA (ID, NOM, LOCALISATION, ETAT)
-VALUES ('CINCIN' || LPAD(GETSEQCINCINEMA, 6, '0'), 'Cin&eacute;ma principal', 'Antananarivo', 1);
+VALUES ('CINCIN' || LPAD(GETSEQCINCINEMA, 6, '0'), 'Cinema principal', 'Antananarivo', 1);
 
 -- Couleurs du concept : standard jaune, moyen vert, premium rouge
 INSERT INTO CIN_CLASSE_PLACE (ID, VAL, DESCE, PRIX, COULEUR, ETAT)
@@ -150,14 +151,14 @@ VALUES ('CINCLA' || LPAD(GETSEQCINCLASSEPLACE, 6, '0'), 'Premium', 'Place premiu
 INSERT INTO CIN_CATEGORIE_FILM (ID, VAL, ETAT) VALUES ('CINCAT' || LPAD(GETSEQCINCATEGORIEFILM, 6, '0'), 'Action', 1);
 INSERT INTO CIN_CATEGORIE_FILM (ID, VAL, ETAT) VALUES ('CINCAT' || LPAD(GETSEQCINCATEGORIEFILM, 6, '0'), 'Aventure', 1);
 INSERT INTO CIN_CATEGORIE_FILM (ID, VAL, ETAT) VALUES ('CINCAT' || LPAD(GETSEQCINCATEGORIEFILM, 6, '0'), 'Animation', 1);
-INSERT INTO CIN_CATEGORIE_FILM (ID, VAL, ETAT) VALUES ('CINCAT' || LPAD(GETSEQCINCATEGORIEFILM, 6, '0'), 'Com&eacute;die', 1);
+INSERT INTO CIN_CATEGORIE_FILM (ID, VAL, ETAT) VALUES ('CINCAT' || LPAD(GETSEQCINCATEGORIEFILM, 6, '0'), 'Comedie', 1);
 INSERT INTO CIN_CATEGORIE_FILM (ID, VAL, ETAT) VALUES ('CINCAT' || LPAD(GETSEQCINCATEGORIEFILM, 6, '0'), 'Drame', 1);
 INSERT INTO CIN_CATEGORIE_FILM (ID, VAL, ETAT) VALUES ('CINCAT' || LPAD(GETSEQCINCATEGORIEFILM, 6, '0'), 'Horreur', 1);
 INSERT INTO CIN_CATEGORIE_FILM (ID, VAL, ETAT) VALUES ('CINCAT' || LPAD(GETSEQCINCATEGORIEFILM, 6, '0'), 'Science-fiction', 1);
 
 INSERT INTO CIN_PARAMETRE (ID, CODE, VALEUR, DESCE)
 VALUES ('CINPAR' || LPAD(GETSEQCINPARAMETRE, 6, '0'), 'DELAI_EXPIRATION_MIN', '30',
-        'Minutes avant le d&eacute;but de la s&eacute;ance apr&egrave;s lesquelles une r&eacute;servation non pay&eacute;e expire');
+        'Minutes avant le debut de la seance apres lesquelles une reservation non payee expire');
 
 -- ---------------------------------------------------------------------
 -- Menus : Cinema > Configurations > (Cinemas, Classes de place, Categories de film, Acteurs, Parametres)

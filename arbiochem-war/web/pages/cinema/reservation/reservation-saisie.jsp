@@ -6,11 +6,14 @@
 <%@page import="cinema.salle.CinClassePlace"%>
 <%@page import="cinema.utils.CinParametre"%>
 <%@page import="cinema.utils.CinUtils"%>
+<%@page import="affichage.PageInsert"%>
+<%@page import="user.UserEJB"%>
 <%@page import="java.sql.Connection"%>
 <%@page import="java.sql.Date"%>
 <%@page import="utilitaire.UtilDB"%>
 <%--
-    Reservation (maquette du bas) : seance, client, plan de la salle (places libres cliquables, prises barrees), total, Valider.
+    Reservation (maquette du bas) : seance, plan de la salle (places libres cliquables, prises barrees), total,
+    client (champ APJ standard : recherche client.Client + bouton "+" de creation, comme les autres saisies), Valider.
     Sans parametre iddiffusion : choix d'une seance ouverte a la reservation.
     Envoi vers apres-reservation.jsp -> CinTicket.reserver (verrou sur la seance, places re-verifiees).
 --%>
@@ -61,12 +64,12 @@
 <%
         } else {
             // ---------- reservation sur le plan ----------
+            UserEJB u = (UserEJB) session.getValue("u");
             CinDiffusionLib d;
             boolean ouverte;
             int delai;
             CinPlaceDiffusion[] planPlaces;
             CinClassePlace[] planClasses;
-            String idClient = request.getParameter("idclient"), nomClient = null;
             Connection c = null;
             try {
                 c = new UtilDB().GetConn();
@@ -76,76 +79,77 @@
                 delai = CinParametre.getDelaiExpirationMinutes(c);
                 planPlaces = CinTicket.getPlacesDiffusion(idDiffusion, c);
                 planClasses = CinClassePlace.getClassesActives(c);
-                if (!CinUtils.estVide(idClient)) nomClient = CinUtils.valeur(c, "select nom from CLIENT where id = ?", idClient);
             } finally {
                 if (c != null) c.close();
             }
             int planColonnes = 0;
             for (CinPlaceDiffusion p : planPlaces) planColonnes = Math.max(planColonnes, p.getColonne());
             boolean planEditable = ouverte;
+
+            // formulaire APJ standard pour le client (meme recherche et meme bouton "+" que les autres saisies)
+            PageInsert pi = new PageInsert(new CinTicket(), request, u);
+            pi.setLien(lien);
+            pi.getFormu().getChamp("idclient").setLibelle("Client");
+            pi.getFormu().getChamp("idclient").setPageAppelComplete("client.Client", "id", "Client");
+            pi.getFormu().getChamp("idclient").setPageAppelInsert("client/client-saisie.jsp", "idclient;idclientlibelle", "id;nom");
+            if (request.getParameter("idclient") != null) pi.getFormu().getChamp("idclient").setDefaut(request.getParameter("idclient"));
+            pi.getFormu().getChamp("remarque").setLibelle("Remarque (facultatif)");
+            for (String cache : new String[]{"iddiffusion", "daty_reservation", "heure_reservation", "montant", "etat"}) {
+                pi.getFormu().getChamp(cache).setVisible(false);
+            }
+            pi.getFormu().setOrdre(new String[]{"idclient", "remarque"});
+            pi.preparerDataFormu();
 %>
-<style>
-    .cin-resa-entete { display: flex; gap: 14px; align-items: center; }
-    .cin-resa-entete img { width: 120px; height: 80px; object-fit: cover; border-radius: 10px; background: #E9ECEF; }
-    .cin-client { position: relative; max-width: 460px; }
-    .cin-client-resultats { position: absolute; z-index: 20; left: 0; right: 0; background: #fff; border: 1px solid #C3C5C6; border-radius: 8px;
-                            max-height: 260px; overflow-y: auto; display: none; }
-    .cin-client-resultats div { padding: 6px 10px; cursor: pointer; }
-    .cin-client-resultats div:hover { background: #e8effb; }
-    .cin-total { font-size: 18px; }
-</style>
 <div class="content-wrapper">
-    <h1 class="box-title"><a href="<%= lien %>?but=cinema/diffusion/diffusion-fiche.jsp&id=<%= idDiffusion %>"><i class="fa fa-arrow-circle-left"></i></a>
-        R&eacute;servation</h1>
-    <div class="box">
-        <div class="box-body">
-            <div class="cin-resa-entete">
-                <img src="<%= urlPhoto + d.getIdfilm() %>" alt="">
-                <div>
-                    <h3 style="margin: 0;"><%= html(d.getIdfilmlib()) %></h3>
-                    <div><%= html(d.getIdsallelib()) %> &middot; <%= CinDiffusion.formatDate(d.getDaty()) %> &middot;
-                        <b><%= d.getHeure() %> &ndash; <%= d.getHeure_fin() %></b> (<%= html(d.getDureelib()) %>)</div>
-                    <div class="text-muted">Une r&eacute;servation non pay&eacute;e expire <%= delai %> min avant le d&eacute;but de la s&eacute;ance.</div>
+    <h1><a href="<%= lien %>?but=cinema/diffusion/diffusion-fiche.jsp&id=<%= idDiffusion %>"><i class="fa fa-arrow-circle-left"></i></a>
+        R&eacute;servation &mdash; <%= html(d.getIdfilmlib()) %></h1>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="box">
+                <div class="box-body">
+                    <img src="<%= urlPhoto + d.getIdfilm() %>" alt=""
+                         style="width: 100%; max-height: 200px; object-fit: contain; background: #E9ECEF; border-radius: 10px;">
+                    <table class="table table-condensed" style="margin-top: 10px;">
+                        <tr><th>Film</th><td><%= html(d.getIdfilmlib()) %></td></tr>
+                        <tr><th>Salle</th><td><%= html(d.getIdsallelib()) %></td></tr>
+                        <tr><th>Date</th><td><%= CinDiffusion.formatDate(d.getDaty()) %></td></tr>
+                        <tr><th>Horaire</th><td><%= d.getHeure() %> &ndash; <%= d.getHeure_fin() %> (<%= html(d.getDureelib()) %>)</td></tr>
+                    </table>
+                    <p class="text-muted">Une r&eacute;servation non pay&eacute;e expire <%= delai %> min avant le d&eacute;but de la s&eacute;ance.</p>
+                    <% if (!ouverte) { %>
+                    <div class="alert alert-warning">Les r&eacute;servations sont closes pour cette s&eacute;ance
+                        (annul&eacute;e, commenc&eacute;e ou moins de <%= delai %> min avant le d&eacute;but).</div>
+                    <% } %>
                 </div>
             </div>
-            <% if (!ouverte) { %>
-            <div class="alert alert-warning" style="margin-top: 12px;">Les r&eacute;servations sont closes pour cette s&eacute;ance
-                (annul&eacute;e, commenc&eacute;e ou moins de <%= delai %> min avant le d&eacute;but).</div>
+            <% if (ouverte) { %>
+            <div class="box">
+                <div class="box-body">
+                    <p><b>Places choisies :</b> <span id="cinListePlaces">aucune</span><br>
+                        <b>Total :</b> <span id="cinTotal">0</span> Ar</p>
+                    <form action="<%= lien %>?but=cinema/reservation/apres-reservation.jsp" method="post" id="cinFormResa">
+                        <input type="hidden" name="iddiffusion" value="<%= html(idDiffusion) %>">
+                        <input type="hidden" name="places" id="cinPlaces">
+                        <%
+                            pi.getFormu().makeHtmlInsertTabIndex();
+                            out.println(pi.getFormu().getHtmlInsert());
+                        %>
+                    </form>
+                </div>
+            </div>
             <% } %>
         </div>
+        <div class="col-md-8">
+            <div class="box">
+                <div class="box-header with-border"><h3 class="box-title">Cliquez sur les places libres</h3></div>
+                <div class="box-body">
+                    <%@ include file="../inc/plan-salle.jspf" %>
+                </div>
+            </div>
+        </div>
     </div>
-    <form action="<%= lien %>?but=cinema/reservation/apres-reservation.jsp" method="post" id="cinFormResa">
-        <input type="hidden" name="iddiffusion" value="<%= idDiffusion %>">
-        <input type="hidden" name="places" id="cinPlaces">
-        <div class="box">
-            <div class="box-body">
-                <label>Client</label>
-                <div style="display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap;">
-                    <div class="cin-client">
-                        <input type="hidden" name="idclient" id="cinIdClient" value="<%= nomClient == null ? "" : html(idClient) %>">
-                        <input type="text" class="form-control" id="cinRechercheClient" autocomplete="off"
-                               placeholder="Rechercher un client (nom, t&eacute;l&eacute;phone)" value="<%= html(nomClient) %>">
-                        <div class="cin-client-resultats" id="cinResultatsClient"></div>
-                    </div>
-                    <a class="btn btn-secondary" target="_blank" href="<%= lien %>?but=client/client-saisie.jsp" title="Cr&eacute;er un client (nouvel onglet)">
-                        <i class="material-symbols-rounded" style="font-size: 18px; vertical-align: middle;">person_add</i> Nouveau client</a>
-                </div>
-                <small class="text-muted">Apr&egrave;s avoir cr&eacute;&eacute; un client dans l'autre onglet, recherchez-le ici.</small>
-            </div>
-        </div>
-        <div class="box">
-            <div class="box-header with-border"><h3 class="box-title">Choisissez les places (cliquez sur une place libre)</h3></div>
-            <div class="box-body">
-                <%@ include file="../inc/plan-salle.jspf" %>
-                <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 10px;">
-                    <span class="cin-total">Places : <b id="cinListePlaces">aucune</b> &middot; Total : <b id="cinTotal">0</b> Ar</span>
-                    <input type="text" name="remarque" class="form-control" style="max-width: 320px;" placeholder="Remarque (facultatif)" maxlength="500">
-                    <button type="submit" class="btn btn-primary" style="margin-left: auto;" <%= ouverte ? "" : "disabled" %>>Valider la r&eacute;servation</button>
-                </div>
-            </div>
-        </div>
-    </form>
 </div>
+<% if (ouverte) { %>
 <script>
     (function () {
         var choisies = {};
@@ -159,46 +163,21 @@
         }
         plan.addEventListener('click', function (e) {
             var p = e.target;
-            if (!p.classList.contains('cin-place') || !p.hasAttribute('data-id') || !plan.classList.contains('cin-editable')) return;
+            if (!p.classList.contains('cin-place') || !p.hasAttribute('data-id')) return;
             if (p.getAttribute('data-statut') !== '<%= CinPlaceDiffusion.LIBRE %>') return;
             var id = p.getAttribute('data-id');
             if (choisies[id]) { delete choisies[id]; p.classList.remove('cin-choisie'); }
             else { choisies[id] = {prix: parseFloat(p.getAttribute('data-prix')) || 0, numero: p.getAttribute('data-numero')}; p.classList.add('cin-choisie'); }
             maj();
         });
-
-        // recherche de client
-        var champ = document.getElementById('cinRechercheClient'), boite = document.getElementById('cinResultatsClient'),
-            idClient = document.getElementById('cinIdClient'), minuteur = null;
-        function texte(t) { var s = document.createElement('span'); s.textContent = t || ''; return s.innerHTML; }
-        champ.addEventListener('input', function () {
-            idClient.value = '';
-            clearTimeout(minuteur);
-            var q = champ.value.trim();
-            if (!q) { boite.style.display = 'none'; return; }
-            minuteur = setTimeout(function () {
-                fetch('<%= request.getContextPath() %>/cinema/clients?q=' + encodeURIComponent(q), {credentials: 'same-origin'})
-                    .then(function (r) { return r.json(); })
-                    .then(function (liste) {
-                        boite.innerHTML = liste.length ? '' : '<div class="text-muted">Aucun client</div>';
-                        liste.forEach(function (cl) {
-                            var ligne = document.createElement('div');
-                            ligne.innerHTML = '<b>' + texte(cl.nom) + '</b> <span class="text-muted">' + texte(cl.tel) + ' &middot; ' + texte(cl.id) + '</span>';
-                            ligne.addEventListener('click', function () { idClient.value = cl.id; champ.value = cl.nom; boite.style.display = 'none'; });
-                            boite.appendChild(ligne);
-                        });
-                        boite.style.display = 'block';
-                    });
-            }, 250);
-        });
-        document.addEventListener('click', function (e) { if (!boite.contains(e.target) && e.target !== champ) boite.style.display = 'none'; });
-
         document.getElementById('cinFormResa').addEventListener('submit', function (e) {
-            if (!idClient.value) { e.preventDefault(); alert('Choisissez le client dans la liste.'); champ.focus(); return; }
+            var client = this.elements['idclient'];
+            if (!client || !client.value) { e.preventDefault(); alert('Choisissez le client.'); return; }
             if (!document.getElementById('cinPlaces').value) { e.preventDefault(); alert('Choisissez au moins une place sur le plan.'); }
         });
     })();
 </script>
+<% } %>
 <%
         }
     } catch (Exception e) {
