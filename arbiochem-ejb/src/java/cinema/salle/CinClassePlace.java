@@ -69,6 +69,36 @@ public class CinClassePlace extends ClassMAPTable {
         }
     }
 
+    /**
+     * Classes actives triees par prix (legende et palette du plan de salle).
+     */
+    public static CinClassePlace[] getClassesActives(Connection c) throws Exception {
+        boolean canClose = false;
+        try {
+            if (c == null) {
+                c = new utilitaire.UtilDB().GetConn();
+                canClose = true;
+            }
+            java.util.List<CinClassePlace> classes = new java.util.ArrayList<CinClassePlace>();
+            try (java.sql.PreparedStatement ps = c.prepareStatement(
+                    "select id, val, desce, prix, couleur from CIN_CLASSE_PLACE where etat = 1 order by prix, val");
+                 java.sql.ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    CinClassePlace cl = new CinClassePlace();
+                    cl.setId(rs.getString("id"));
+                    cl.val = rs.getString("val");
+                    cl.setDesce(rs.getString("desce"));
+                    cl.prix = rs.getDouble("prix");
+                    cl.setCouleur(rs.getString("couleur"));
+                    classes.add(cl);
+                }
+            }
+            return classes.toArray(new CinClassePlace[0]);
+        } finally {
+            if (canClose) c.close();
+        }
+    }
+
     public String getId() {
         return id;
     }

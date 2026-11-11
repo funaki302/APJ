@@ -36,6 +36,23 @@ public class CinUtils {
         }
     }
 
+    /**
+     * Premiere colonne de la premiere ligne d'une requete preparee, ou null si aucune ligne.
+     */
+    public static String valeur(Connection c, String sql, String... parametres) throws Exception {
+        try (PreparedStatement ps = c.prepareStatement(sql)) {
+            for (int i = 0; i < parametres.length; i++) ps.setString(i + 1, parametres[i]);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getString(1) : null;
+            }
+        }
+    }
+
+    public static int entier(Connection c, String sql, String... parametres) throws Exception {
+        String v = valeur(c, sql, parametres);
+        return v == null ? 0 : Integer.parseInt(v);
+    }
+
     public static void verifierEtat(int etat) throws Exception {
         if (etat != ETAT_ACTIF && etat != ETAT_INACTIF) {
             throw new Exception("L'&eacute;tat doit &ecirc;tre Actif ou Inactif");

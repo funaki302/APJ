@@ -1,0 +1,70 @@
+<%--
+    Plan de salle (reutilise par la fiche salle, la modification du plan et, plus tard, la reservation).
+    La page qui inclut ce fragment doit declarer AVANT l'include :
+        cinema.salle.CinPlaceLib[] planPlaces;   places triees par rangee puis colonne
+        int planColonnes;                         nombre de places par rangee
+        cinema.salle.CinClassePlace[] planClasses; classes actives (legende)
+        boolean planEditable;                     true : clic sur une place / une rangee / une colonne (voir salle-plan.jsp)
+    Chaque place : <div class="cin-place" data-id data-classe data-etat>, couleur de sa classe, grisee si hors service.
+--%>
+<style>
+    .cin-plan { overflow-x: auto; padding: 12px 0; }
+    .cin-ecran { margin: 0 auto 18px; width: 70%; text-align: center; font-size: 12px; letter-spacing: 4px; color: #666;
+                 border-top: 4px solid #9B9EA0; border-radius: 50% 50% 0 0 / 12px 12px 0 0; padding-top: 4px; }
+    .cin-grille { display: grid; gap: 6px; justify-content: center; align-items: center; }
+    .cin-place { width: 34px; height: 30px; border-radius: 6px 6px 3px 3px; border: 1px solid rgba(0,0,0,.25);
+                 font-size: 10px; line-height: 28px; text-align: center; color: #1C1F21; user-select: none; }
+    .cin-place.cin-hs { background: repeating-linear-gradient(45deg, #ddd, #ddd 4px, #bbb 4px, #bbb 8px) !important; color: #777; }
+    .cin-place.cin-modifiee { outline: 2px solid #2B68D9; outline-offset: 1px; }
+    .cin-entete { font-size: 11px; font-weight: 600; color: #666; text-align: center; user-select: none; }
+    .cin-editable .cin-place, .cin-editable .cin-entete { cursor: pointer; }
+    .cin-editable .cin-entete:hover { color: #2B68D9; }
+    .cin-legende { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; margin-top: 14px; font-size: 13px; }
+    .cin-legende span.cin-pastille { display: inline-block; width: 16px; height: 16px; border-radius: 4px; border: 1px solid rgba(0,0,0,.25);
+                                     vertical-align: middle; margin-right: 6px; }
+</style>
+<%
+    {
+        java.text.DecimalFormat cinFormatPrix = new java.text.DecimalFormat("#,##0");
+        java.util.Map<String, Integer> cinNbParClasse = new java.util.HashMap<String, Integer>();
+        int cinNbHs = 0;
+        for (cinema.salle.CinPlaceLib p : planPlaces) {
+            if (p.getEtat() == cinema.salle.CinPlace.HORS_SERVICE) cinNbHs++;
+            else cinNbParClasse.put(p.getIdclasse(), (cinNbParClasse.containsKey(p.getIdclasse()) ? cinNbParClasse.get(p.getIdclasse()) : 0) + 1);
+        }
+%>
+<div class="cin-plan <%= planEditable ? "cin-editable" : "" %>" id="cinPlan">
+    <div class="cin-ecran">&Eacute;CRAN</div>
+    <div class="cin-grille" style="grid-template-columns: 24px repeat(<%= planColonnes %>, 34px);">
+        <div></div>
+        <% for (int col = 1; col <= planColonnes; col++) { %>
+        <div class="cin-entete" data-colonne="<%= col %>"><%= col %></div>
+        <% } %>
+        <%
+            int cinRangeeCourante = 0;
+            for (cinema.salle.CinPlaceLib p : planPlaces) {
+                if (p.getRangee() != cinRangeeCourante) {
+                    cinRangeeCourante = p.getRangee();
+        %>
+        <div class="cin-entete" data-rangee="<%= cinRangeeCourante %>"><%= (char) ('A' + cinRangeeCourante - 1) %></div>
+        <%      }
+                boolean cinHs = p.getEtat() == cinema.salle.CinPlace.HORS_SERVICE;
+        %>
+        <div class="cin-place <%= cinHs ? "cin-hs" : "" %>" style="background: <%= p.getCouleur() %>;"
+             data-id="<%= p.getId() %>" data-classe="<%= p.getIdclasse() %>" data-etat="<%= p.getEtat() %>"
+             data-rangee="<%= p.getRangee() %>" data-colonne="<%= p.getColonne() %>"
+             title="<%= p.getNumero() %> - <%= cinHs ? "Hors service" : p.getIdclasselib() + " - " + cinFormatPrix.format(p.getPrix()) + " Ar" %>"><%= p.getNumero() %></div>
+        <% } %>
+    </div>
+    <div class="cin-legende">
+        <% for (cinema.salle.CinClassePlace cl : planClasses) {
+               int cinNb = cinNbParClasse.containsKey(cl.getId()) ? cinNbParClasse.get(cl.getId()) : 0; %>
+        <div><span class="cin-pastille" style="background: <%= cl.getCouleur() %>;"></span><%= cl.getVal() %> &mdash;
+            <%= cinFormatPrix.format(cl.getPrix()) %> Ar (<%= cinNb %> places)</div>
+        <% } %>
+        <div><span class="cin-pastille cin-place cin-hs" style="width: 16px; height: 16px;"></span>Hors service (<%= cinNbHs %>)</div>
+    </div>
+</div>
+<%
+    }
+%>

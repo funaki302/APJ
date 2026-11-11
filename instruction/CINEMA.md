@@ -1,6 +1,6 @@
 # CINEMA : module de gestion d'un cinéma
 
-Dernière mise à jour : 11/11/2026 (étape 1)
+Dernière mise à jour : 11/11/2026 (étape 2)
 
 Plan de travail et décisions : `TEST/CINEMA/TO-DO-CINEMA-1.md`. Livraisons : `TEST/CINEMA/ETAPE-n/`.
 
@@ -39,6 +39,7 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 |---|---|
 | `etape-0-menu.sql` | menu racine **Cinéma** (icône `movie`) + sous-menu **Accueil cinéma** + droit d'accès `USERMENU` (`UMCINEMA01`) |
 | `etape-1-referentiels.sql` | référentiels : tables `CIN_CINEMA`, `CIN_CLASSE_PLACE`, `CIN_CATEGORIE_FILM`, `CIN_ACTEUR`, `CIN_PARAMETRE`, vues `*_LIB`, données initiales, menus Configurations |
+| `etape-2-salles.sql` | tables `CIN_SALLE`, `CIN_PLACE`, vues `CIN_SALLE_LIB`, `CIN_PLACE_LIB`, menus Salles |
 | `cinema-reset.sql` | supprime tous les objets `CIN_*` / `SEQ_CIN_*` / `GETSEQCIN*` et les menus `MENDYNCINEMA%`. Testé le 11/11/2026. |
 
 ## 4. Avancement
@@ -47,7 +48,7 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 |---|---|---|
 | 0 | Socle : packages, dossiers, menu, accueil, reset, doc | fait (11/11/2026) |
 | 1 | Référentiels | fait (11/11/2026) |
-| 2 | Salles et places | à faire |
+| 2 | Salles et places | fait (11/11/2026) |
 | 3 | Films | à faire |
 | 4 | Achats → sortie de caisse | à faire |
 | 5 | Diffusions | à faire |
@@ -77,6 +78,20 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 - `CinParametre.getDelaiExpirationMinutes(c)` : délai d'expiration des réservations (30 par défaut si absent ou invalide).
 - `CinUtils.valeurExiste(...)` : contrôle de doublon par requête préparée (la valeur saisie n'est jamais concaténée dans le SQL).
 - Fragment `cinema/inc/couleur-apercu.jspf` : affiche une pastille de couleur devant tout texte `#RRGGBB` d'un tableau ou d'une fiche.
+
+## 6 bis. Étape 2 : salles et places
+
+| Table | Classe Java | Préfixe id | Pages |
+|---|---|---|---|
+| `CIN_SALLE` (vue `CIN_SALLE_LIB`) | `cinema.salle.CinSalle` / `CinSalleLib` | `CINSAL` | `cinema/salle/salle-{saisie,liste,fiche,modif,plan}.jsp`, `apres-salle-plan.jsp` |
+| `CIN_PLACE` (vue `CIN_PLACE_LIB`) | `cinema.salle.CinPlace` / `CinPlaceLib` | `CINPLA` + 8 chiffres | pas de page propre : plan de la salle |
+
+- **Création d'une salle** : `CinSalle.createObject` insère la salle puis `genererPlaces` crée `NB_RANGEES × NB_COLONNES` places (A1…Z40) par un insert en lot, dans la classe renvoyée par `getIdClasseParDefaut` (classe active la moins chère). Tout est dans la transaction d'`apresTarif.jsp` : si la génération échoue, la salle n'est pas créée.
+- **Prix d'une place** = prix de sa classe (pas de colonne `PRIX` dans `CIN_PLACE`) : changer le prix d'une classe change le prix de toutes ses places.
+- **Structure figée** : rangées et colonnes ne changent plus après la création (contrôle dans `updateToTableWithHisto`).
+- **Plan** : `CinSalle.getPlaces(idSalle, c)` (places triées, avec couleur et prix) + `CinClassePlace.getClassesActives(c)` alimentent le fragment `cinema/inc/plan-salle.jspf`. Variables à déclarer avant l'include : `planPlaces`, `planColonnes`, `planClasses`, `planEditable`. Chaque place est un `div.cin-place` avec `data-id`, `data-classe`, `data-etat`, `data-rangee`, `data-colonne`.
+- **Modification du plan** : `salle-plan.jsp` envoie `modifs = "idplace:idclasse;idplace:HS;..."` à `apres-salle-plan.jsp` → `CinSalle.modifierPlaces(idSalle, modifs)` (sa propre transaction). Une classe remet la place en service ; `HS` la met hors service sans changer sa classe.
+- **Suppression d'une salle** : supprime ses places (`ON DELETE CASCADE`).
 
 ## 7. Pièges APJ (à retenir pour les étapes suivantes)
 

@@ -43,7 +43,7 @@ Film ──► Diffusion (film + salle + date/heure)
 | Menu | Un menu de niveau 1 **CINEMA** (icône `movie`) dans `MENUDYNAMIQUE`, à côté de Ferme / Production / Produit. Tous les sous-menus ont `ID_PERE` = ce menu. |
 | Fichiers intouchables | `apresTarif.jsp` et `apresMultiple.jsp` ne sont **jamais** modifiés. Si besoin d'un traitement spécial : page relais `cinema/.../apres-xxx.jsp` puis renvoi vers `apresTarif.jsp`. |
 | Logique | Dans les classes Java (`controler`, `createObject`, `validerObject`, surcharges + appel de `super`), jamais seulement dans la JSP. Pas de `commit()` au milieu d'un visa. |
-| Livraison | À la fin de chaque étape : copie des fichiers modifiés dans `TEST/CINEMA/ETAPE-n/` (en gardant l'arborescence `arbiochem-ejb/…`, `arbiochem-war/…`, `data/…`) + `README.md`, et mise à jour de `instruction/CINEMA.md`. |
+| Livraison | **Une seule fois, à la fin de toutes les étapes** (décision du 11/11/2026) : copie de tous les fichiers du module dans `TEST/CINEMA/` (en gardant l'arborescence `arbiochem-ejb/…`, `arbiochem-war/…`, `data/…`) + un `README.md` global. Pendant les étapes : seulement cocher ce TO-DO et tenir `instruction/CINEMA.md` à jour. |
 
 Conventions APJ reprises de l'existant : `ID VARCHAR2`, `ETAT NUMBER` (1 = créé, 11 = visé/validé, 0 = annulé) à la place d'un champ texte `statut`, `DATY` pour les dates, classes `*Lib` / `*Cpl` pour lire les vues d'affichage.
 
@@ -71,8 +71,8 @@ Conventions APJ reprises de l'existant : `ID VARCHAR2`, `ETAT NUMBER` (1 = cré�
 |---|---|---|---|
 | `CIN_CINEMA` | ID, NOM, LOCALISATION, DATE_CREATION, ETAT | `ClassEtat` | Un seul cinéma au départ, mais le modèle en accepte plusieurs. |
 | `CIN_CLASSE_PLACE` | ID, VAL (standard / moyen / premium), DESCE, PRIX, COULEUR, DATE_CREATION, ETAT | `ClassMAPTable` | Couleurs du concept : standard jaune, moyen vert, premium rouge. |
-| `CIN_SALLE` | ID, IDCINEMA, NOM, CAPACITE, NB_RANGEES, NB_COLONNES, DATE_CREATION, ETAT | `ClassMere` (fille = place) | `NB_RANGEES` × `NB_COLONNES` ajoutées pour dessiner le plan (maquette `salle_saisie`). |
-| `CIN_PLACE` | ID, IDSALLE, IDCLASSE, NUMERO (A1, A2…), RANGEE, COLONNE, PRIX, ETAT | `ClassFille` | Générées automatiquement à la création de la salle, en standard par défaut. `PRIX` repris de la classe, modifiable. |
+| `CIN_SALLE` | ID, IDCINEMA, NOM, CAPACITE, NB_RANGEES, NB_COLONNES, DATE_CREATION, ETAT | `ClassMAPTable` (fait, étape 2) | `NB_RANGEES` × `NB_COLONNES` ajoutées pour dessiner le plan (maquette `salle_saisie`). Les places sont créées par `createObject`. |
+| `CIN_PLACE` | ID, IDSALLE, IDCLASSE, NUMERO (A1, A2…), RANGEE, COLONNE, ETAT (1 en service / 0 hors service) | `ClassMAPTable` (fait, étape 2) | Générées automatiquement à la création de la salle, dans la classe active la moins chère. **Pas de colonne PRIX** : le prix est celui de la classe (vue `CIN_PLACE_LIB`), conformément à la décision « prix selon la classe seule ». |
 | `CIN_CATEGORIE_FILM` | ID, VAL, DESCE, DATE_CREATION, ETAT | `TypeObjet` | Action, comédie… |
 | `CIN_ACTEUR` | ID, NOM, NOM_ACTEUR (nom de scène), DATE_NAISSANCE | `ClassMAPTable` | Un acteur principal par film. |
 | `CIN_FILM` | ID, TITRE, IDCATEGORIE, IDACTEUR, DUREE (minutes), PA, PHOTO, DESCRIPTION, DATE_CREATION, ETAT | `ClassEtat` | `PA` = prix d'achat. `PHOTO` = chemin du fichier uploadé. |
@@ -97,7 +97,7 @@ Vues principales :
 
 ## 5. Étapes
 
-Chaque étape se termine par : compilation (`ant -f build.xml deploy`), script SQL joué, test dans WildFly, livraison dans `TEST/CINEMA/ETAPE-n/`.
+Chaque étape se termine par : compilation (`ant -f build.xml deploy`), script SQL joué, test dans WildFly. La livraison dans `TEST/CINEMA/` se fait une seule fois, à l'étape 9.
 
 ### Étape 0 : Socle du module — ✅ FAIT (11/11/2026, livraison `TEST/CINEMA/ETAPE-0/`)
 
@@ -128,15 +128,20 @@ Remarques techniques découvertes pendant l'étape :
 - La modification standard (`apresTarif.jsp` → `UserEJB.updateObject`) **n'appelle pas `controlerUpdate`** : les contrôles de modification sont dans une surcharge de `updateToTableWithHisto`.
 - APJ insère **toutes** les colonnes : une colonne vide est enregistrée à NULL même si la table a un `DEFAULT`. `DATE_CREATION` est donc remplie dans `controler`.
 
-### Étape 2 : Salles et places
+### Étape 2 : Salles et places — ✅ FAIT (11/11/2026, livraison `TEST/CINEMA/ETAPE-2/`)
 
-- [ ] Tables `CIN_SALLE`, `CIN_PLACE` + vues `CIN_SALLE_LIB`, `CIN_PLACE_LIB`.
-- [ ] `CinSalle extends ClassMere` : à la création, **génération automatique des places** (`NB_RANGEES` × `NB_COLONNES`, numéros A1, A2…, classe standard, prix de la classe). Contrôle : capacité = nombre de places.
-- [ ] `salle-liste.jsp` : nom, capacité, état, filtre, pagination (maquette « salle_liste »).
-- [ ] `salle-saisie.jsp` : nom, capacité / rangées / colonnes.
-- [ ] `salle-fiche.jsp` : **plan de salle coloré** (fragment `cinema/inc/plan-salle.jspf`, réutilisé plus tard pour la réservation) + légende standard / moyen / premium.
-- [ ] `salle-modif.jsp` : sur le plan, cliquer une place pour changer sa classe (le prix suit la classe) → page relais `apres-salle-places.jsp` qui met à jour les `CIN_PLACE`.
-- [ ] Interdire de modifier la structure d'une salle qui a des diffusions à venir.
+- [x] `data/cinema/etape-2-salles.sql` : tables `CIN_SALLE`, `CIN_PLACE` (suppression en cascade des places avec la salle) + vues `CIN_SALLE_LIB` (nom du cinéma, places en service), `CIN_PLACE_LIB` (classe, couleur, prix) + menus **Cinéma → Salles → Saisie / Liste**. Joué sur la base locale.
+- [x] `CinSalle` (`ClassMAPTable`, pas `ClassMere` : les places ne se saisissent pas ligne par ligne) : à la création, **génération automatique des places** (`NB_RANGEES` × `NB_COLONNES`, numéros A1, A2…, classe active la moins chère = Standard), dans la même transaction. Capacité = rangées × colonnes, calculée par le Java.
+- [x] Contrôles : nom obligatoire et unique dans le cinéma, cinéma actif, 1 à 26 rangées (A à Z), 1 à 40 places par rangée, au moins une classe de place active.
+- [x] `salle-liste.jsp` : salle, cinéma, rangées, places / rangée, capacité, places en service, état ; filtres nom, cinéma, capacité min / max, état ; clic droit « plan des places ».
+- [x] `salle-saisie.jsp` : cinéma (actifs seulement), nom, rangées, colonnes, capacité affichée en direct.
+- [x] `salle-fiche.jsp` : infos + **plan de salle coloré** (fragment `cinema/inc/plan-salle.jspf`, réutilisable pour la réservation) + légende avec prix et nombre de places par classe.
+- [x] `salle-plan.jsp` (remplace l'idée de `salle-modif` pour les places) : pinceaux (une classe ou « Hors service »), clic sur une place, une lettre (toute la rangée) ou un numéro (toute la colonne) → `apres-salle-plan.jsp` → `CinSalle.modifierPlaces` (vérifie que chaque place est de la salle et chaque classe active).
+- [x] `salle-modif.jsp` : nom, cinéma, état. **Structure (rangées / colonnes) non modifiable** après la création (champ en lecture seule + contrôle Java) : supprimer et recréer la salle.
+- [x] Places **hors service** (siège cassé) : grisées sur le plan, à exclure de la réservation à l'étape 6.
+- [x] Tests faits par moi : compilation Java + 26 JSP, 17 tests Java avec ROLLBACK, rendu HTML du plan vérifié, scripts rejoués depuis zéro (reset → étapes 0, 1, 2).
+- [ ] **À tester par toi dans WildFly** (voir `TEST/CINEMA/ETAPE-2/README.md`).
+- [ ] À faire aux étapes 5 / 6 : interdire la suppression d'une salle qui a des diffusions, et la mise hors service d'une place déjà réservée pour une séance à venir.
 
 ### Étape 3 : Films
 
@@ -198,6 +203,7 @@ Remarques techniques découvertes pendant l'étape :
 - [ ] Cas limites : place déjà prise, chevauchement de séances, paiement incomplet refusé, ticket expiré non payable, annulation.
 - [ ] Vérifier que le reste de l'appli n'est pas impacté (Vente, Caisse, Ferme…).
 - [ ] `instruction/CINEMA.md` à jour, `cinema-reset.sql` testé.
+- [ ] **Livraison unique** dans `TEST/CINEMA/` : tous les fichiers du module (Java, JSP, scripts `data/cinema/` dans l'ordre, `instruction/CINEMA.md`) + README global (installation + tests de chaque étape).
 
 ---
 

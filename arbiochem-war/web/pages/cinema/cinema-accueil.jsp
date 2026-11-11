@@ -16,7 +16,7 @@
     // { titre, description, lien (null = page pas encore faite), icone, etape }
     String[][] modules = {
         {"Configurations", "Cin&eacute;mas, classes de place (prix, couleur), cat&eacute;gories de film, acteurs et param&egrave;tres.", "cinema/salle/classe-place-liste.jsp", "settings", "1"},
-        {"Salles", "Salles du cin&eacute;ma, plan des places et classes (standard, moyen, premium).", null, "chair", "2"},
+        {"Salles", "Salles du cin&eacute;ma, plan des places et classes (standard, moyen, premium).", "cinema/salle/salle-liste.jsp", "chair", "2"},
         {"Films", "Catalogue des films : cat&eacute;gorie, acteur principal, dur&eacute;e, photo.", null, "movie", "3"},
         {"Achats", "Achats de films et de mat&eacute;riel : sortie d'argent de la caisse.", null, "shopping_bag", "4"},
         {"Diffusions", "S&eacute;ances : tel film, dans telle salle, &agrave; telle heure.", null, "event", "5"},
