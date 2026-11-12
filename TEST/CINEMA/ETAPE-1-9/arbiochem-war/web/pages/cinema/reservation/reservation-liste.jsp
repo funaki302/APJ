@@ -22,7 +22,7 @@
         Liste[] liste = new Liste[3];
         liste[0] = new Liste("idfilm", new CinFilm(), "titre", "id");
         liste[1] = new Liste("idsalle", new CinSalle(), "nom", "id");
-        liste[2] = new Liste("etat", new String[]{"Tous", "R&eacute;serv&eacute; / expir&eacute;", "Pay&eacute;", "Annul&eacute;"}, new String[]{"", "1", "11", "0"});
+        liste[2] = new Liste("etat", new String[]{"Tous", "R&eacute;serv&eacute; / expir&eacute;", "Factur&eacute; / pay&eacute;", "Annul&eacute;"}, new String[]{"", "1", "11", "0"});
         pr.getFormu().changerEnChamp(liste);
         pr.getFormu().getChamp("id").setLibelle("ID");
         pr.getFormu().getChamp("idclientlib").setLibelle("Client");

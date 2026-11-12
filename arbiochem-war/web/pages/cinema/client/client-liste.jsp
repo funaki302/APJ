@@ -8,7 +8,7 @@
         String listeCrt[] = {"id", "nom", "telephone", "montant_paye"};
         String listeInt[] = {"montant_paye"};
         String libEntete[] = {"id", "nom", "telephone", "nb_tickets", "nb_payes", "nb_en_attente", "nb_places_payees", "montant_paye", "derniere_reservation"};
-        String libEnteteAffiche[] = {"ID", "Client", "T&eacute;l&eacute;phone", "Tickets", "Pay&eacute;s", "En attente", "Places pay&eacute;es", "Montant pay&eacute; (Ar)", "Derni&egrave;re r&eacute;servation"};
+        String libEnteteAffiche[] = {"ID", "Client", "T&eacute;l&eacute;phone", "Tickets", "Factur&eacute;s", "En attente", "Places vendues", "Montant factur&eacute; (Ar)", "Derni&egrave;re r&eacute;servation"};
 
         PageRecherche pr = new PageRecherche(t, request, listeCrt, listeInt, 3, libEntete, libEntete.length);
         pr.setTitre("Clients du cin&eacute;ma");
@@ -18,8 +18,8 @@
         pr.getFormu().getChamp("id").setLibelle("ID");
         pr.getFormu().getChamp("nom").setLibelle("Client");
         pr.getFormu().getChamp("telephone").setLibelle("T&eacute;l&eacute;phone");
-        pr.getFormu().getChamp("montant_paye1").setLibelle("Montant pay&eacute; min");
-        pr.getFormu().getChamp("montant_paye2").setLibelle("Montant pay&eacute; max");
+        pr.getFormu().getChamp("montant_paye1").setLibelle("Montant factur&eacute; min");
+        pr.getFormu().getChamp("montant_paye2").setLibelle("Montant factur&eacute; max");
 
         pr.creerObjetPage(libEntete, new String[]{"montant_paye"});
 

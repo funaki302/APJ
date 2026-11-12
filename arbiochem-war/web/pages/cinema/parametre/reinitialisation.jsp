@@ -18,6 +18,8 @@
                     <p>Cette action efface <b>d&eacute;finitivement</b> toutes les donn&eacute;es du cin&eacute;ma : tickets, paiements, factures,
                         achats, s&eacute;ances, salles et places, films et leurs photos, acteurs, clients cr&eacute;&eacute;s pour le cin&eacute;ma
                         (<code>CLICIN...</code>), mouvements et reports de la Caisse Cin&eacute;ma.</p>
+                    <p><b>Jamais effac&eacute;s :</b> les factures des tickets (ventes de la facturation de l'application), leurs encaissements
+                        et les clients qui ont une facture : ce sont des pi&egrave;ces comptables, &agrave; annuler s'il le faut dans la facturation.</p>
                     <p><b>Conserv&eacute;s :</b> le cin&eacute;ma, les classes de place, les cat&eacute;gories de film, les param&egrave;tres,
                         les caisses par mode de paiement, la Caisse Cin&eacute;ma, les menus et tout le reste de l'application
                         (ventes, autres caisses, vrais clients...).</p>

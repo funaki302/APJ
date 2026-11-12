@@ -72,15 +72,15 @@
         <div><label for="cinDebut">Du</label><input type="date" class="form-control" id="cinDebut" name="debut" value="<%= debut %>"></div>
         <div><label for="cinFin">Au</label><input type="date" class="form-control" id="cinFin" name="fin" value="<%= fin %>"></div>
         <button type="submit" class="btn btn-primary">Afficher</button>
-        <span class="text-muted" style="margin-left: 6px;">P&eacute;riode : paiements, achats vis&eacute;s et s&eacute;ances du <%= cinema.diffusion.CinDiffusion.formatDate(debut) %>
+        <span class="text-muted" style="margin-left: 6px;">P&eacute;riode : factures, achats vis&eacute;s et s&eacute;ances du <%= cinema.diffusion.CinDiffusion.formatDate(debut) %>
             au <%= cinema.diffusion.CinDiffusion.formatDate(fin) %></span>
     </form>
 
     <div class="cin-kpis">
-        <div class="cin-kpi"><div class="lib">Recettes (tickets pay&eacute;s)</div><div class="val"><%= fmt.format(tb.recettes) %> Ar</div>
-            <div class="sous"><%= tb.nbPaiements %> paiement(s)</div></div>
+        <div class="cin-kpi"><div class="lib">Recettes (tickets factur&eacute;s)</div><div class="val"><%= fmt.format(tb.recettes) %> Ar</div>
+            <div class="sous"><%= tb.nbPaiements %> facture(s)</div></div>
         <div class="cin-kpi"><div class="lib">Places vendues</div><div class="val"><%= tb.placesVendues %></div>
-            <div class="sous">places pay&eacute;es sur la p&eacute;riode</div></div>
+            <div class="sous">places vendues sur la p&eacute;riode</div></div>
         <div class="cin-kpi"><div class="lib">R&eacute;servations en attente</div><div class="val"><%= tb.reservationsEnAttente %></div>
             <div class="sous"><%= fmt.format(tb.montantEnAttente) %> Ar &agrave; encaisser (aujourd'hui)</div></div>
         <div class="cin-kpi"><div class="lib">Achats vis&eacute;s</div><div class="val"><%= fmt.format(tb.achats) %> Ar</div>
@@ -97,7 +97,7 @@
                 <div class="box-header with-border"><h3 class="box-title">Recettes par film</h3></div>
                 <div class="box-body">
                     <% if (tb.recettesParFilm.isEmpty()) { %>
-                    <p class="text-muted">Aucun paiement sur la p&eacute;riode.</p>
+                    <p class="text-muted">Aucune facture sur la p&eacute;riode.</p>
                     <% } else { %>
                     <div class="cin-barres">
                         <% for (CinTableauBord.Ligne l : tb.recettesParFilm) { %>
@@ -111,7 +111,7 @@
                     <details>
                         <summary>Voir le tableau</summary>
                         <table class="table table-condensed">
-                            <thead><tr><th>Film</th><th class="num">Places pay&eacute;es</th><th class="num">Recettes (Ar)</th></tr></thead>
+                            <thead><tr><th>Film</th><th class="num">Places vendues</th><th class="num">Recettes (Ar)</th></tr></thead>
                             <tbody>
                             <% for (CinTableauBord.Ligne l : tb.recettesParFilm) { %>
                             <tr><td><%= html(l.libelle) %></td><td class="num"><%= (int) l.valeur2 %></td><td class="num"><%= fmt.format(l.valeur1) %></td></tr>
@@ -130,13 +130,13 @@
                     <% if (tb.remplissage.isEmpty()) { %>
                     <p class="text-muted">Aucune s&eacute;ance programm&eacute;e sur la p&eacute;riode.</p>
                     <% } else { %>
-                    <div class="cin-legende"><div><span style="background: var(--series-1);"></span>Places pay&eacute;es</div>
+                    <div class="cin-legende"><div><span style="background: var(--series-1);"></span>Places vendues</div>
                         <div><span style="background: var(--series-2);"></span>Places r&eacute;serv&eacute;es</div></div>
                     <div class="cin-barres">
                         <% for (CinTableauBord.Ligne l : tb.remplissage) {
                                double total = Math.max(1, l.total);
                                int pct = (int) Math.round(100.0 * (l.valeur1 + l.valeur2) / total); %>
-                        <div class="cin-barre" title="<%= html(l.libelle) %> (<%= html(l.detail) %>) : <%= (int) l.valeur1 %> pay&eacute;e(s), <%= (int) l.valeur2 %> r&eacute;serv&eacute;e(s) sur <%= (int) l.total %> places">
+                        <div class="cin-barre" title="<%= html(l.libelle) %> (<%= html(l.detail) %>) : <%= (int) l.valeur1 %> vendue(s), <%= (int) l.valeur2 %> r&eacute;serv&eacute;e(s) sur <%= (int) l.total %> places">
                             <span class="nom"><a href="<%= lien %>?but=cinema/diffusion/diffusion-fiche.jsp&id=<%= l.id %>"><%= html(l.libelle) %></a><br>
                                 <small class="text-muted"><%= html(l.detail) %></small></span>
                             <span class="piste">
@@ -150,7 +150,7 @@
                     <details>
                         <summary>Voir le tableau</summary>
                         <table class="table table-condensed">
-                            <thead><tr><th>S&eacute;ance</th><th class="num">Pay&eacute;es</th><th class="num">R&eacute;serv&eacute;es</th><th class="num">Places</th><th class="num">Remplissage</th></tr></thead>
+                            <thead><tr><th>S&eacute;ance</th><th class="num">Vendues</th><th class="num">R&eacute;serv&eacute;es</th><th class="num">Places</th><th class="num">Remplissage</th></tr></thead>
                             <tbody>
                             <% for (CinTableauBord.Ligne l : tb.remplissage) { %>
                             <tr><td><%= html(l.libelle) %> &mdash; <%= html(l.detail) %></td><td class="num"><%= (int) l.valeur1 %></td>

@@ -25,6 +25,8 @@
         pu.getFormu().getChamp("date_creation").setLibelle("Date de cr&eacute;ation");
         pu.getFormu().getChamp("date_creation").setAutre("readonly");
         pu.getFormu().getChamp("etat").setLibelle("&Eacute;tat");
+        pu.getFormu().getChamp("idproduit").setAutre("readonly");
+        pu.getFormu().getChamp("idproduit").setLibelle("Produit de facturation (automatique)");
         String lien = (String) session.getValue("lien");
         String id = pu.getBase().getTuppleID();
         pu.preparerDataFormu();

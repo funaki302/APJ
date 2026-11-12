@@ -55,7 +55,8 @@ public class CinTableauBord {
             CinTableauBord tb = new CinTableauBord();
             String periode = " between ? and ?";
 
-            try (PreparedStatement ps = c.prepareStatement("select nvl(sum(montant), 0), count(*) from CIN_PAIEMENT where trunc(daty)" + periode)) {
+            // recettes = tickets factures (ventes visees) + anciens paiements du cinema (vue CIN_RECETTE)
+            try (PreparedStatement ps = c.prepareStatement("select nvl(sum(montant), 0), count(*) from CIN_RECETTE where trunc(daty)" + periode)) {
                 periodeParam(ps, debut, fin, 1);
                 try (ResultSet rs = ps.executeQuery()) {
                     rs.next();
@@ -63,7 +64,7 @@ public class CinTableauBord {
                     tb.nbPaiements = rs.getInt(2);
                 }
             }
-            try (PreparedStatement ps = c.prepareStatement("select count(*) from CIN_TICKET_DETAIL td join CIN_PAIEMENT p on p.idticket = td.idticket"
+            try (PreparedStatement ps = c.prepareStatement("select count(*) from CIN_TICKET_DETAIL td join CIN_RECETTE p on p.idticket = td.idticket"
                     + " where trunc(p.daty)" + periode)) {
                 periodeParam(ps, debut, fin, 1);
                 try (ResultSet rs = ps.executeQuery()) {
@@ -92,7 +93,7 @@ public class CinTableauBord {
             }
 
             // recettes par film (paiements de la periode)
-            try (PreparedStatement ps = c.prepareStatement("select t.idfilm, t.idfilmlib, sum(p.montant), sum(t.nb_places) from CIN_PAIEMENT p"
+            try (PreparedStatement ps = c.prepareStatement("select t.idfilm, t.idfilmlib, sum(p.montant), sum(t.nb_places) from CIN_RECETTE p"
                     + " join CIN_TICKET_LIB t on t.id = p.idticket where trunc(p.daty)" + periode
                     + " group by t.idfilm, t.idfilmlib order by 3 desc, 2")) {
                 periodeParam(ps, debut, fin, 1);
@@ -132,7 +133,8 @@ public class CinTableauBord {
             // derniers mouvements de caisse du cinema (entrees des tickets, sorties des achats, Caisse Cinema)
             String sqlMvt = "select * from (select m.id, to_char(m.daty, 'DD/MM/YYYY'), m.designation, c.val, nvl(m.credit, 0), nvl(m.debit, 0)"
                     + " from MOUVEMENTCAISSE m join CAISSE c on c.id = m.idcaisse"
-                    + " where m.etat >= 11 and (m.idorigine like 'CIN%' or m.idcaisse = 'CAICINEMA') order by m.daty desc, m.id desc) where rownum <= 10";
+                    + " where m.etat >= 11 and (m.idorigine like 'CIN%' or m.idcaisse = 'CAICINEMA'"
+                    + " or m.idorigine in (select idvente from CIN_TICKET where idvente is not null)) order by m.daty desc, m.id desc) where rownum <= 10";
             try (PreparedStatement ps = c.prepareStatement(sqlMvt); ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     Ligne l = new Ligne();

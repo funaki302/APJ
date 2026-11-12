@@ -1,11 +1,11 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@page import="cinema.reservation.CinClient"%>
 <%@page import="cinema.reservation.CinTicketLib"%>
-<%@page import="cinema.paiement.CinPaiementLib"%>
+<%@page import="cinema.paiement.CinFactureVente"%>
 <%@page import="cinema.diffusion.CinDiffusion"%>
 <%@page import="affichage.PageConsulte"%>
 <%@page import="user.UserEJB"%>
-<%-- Fiche client du cinema : totaux, reservations (tickets) et paiements du client --%>
+<%-- Fiche client du cinema : totaux, reservations (tickets) et factures (ventes) du client --%>
 <%!
     static String html(String s) {
         if (s == null) return "";
@@ -25,14 +25,14 @@
         pc.getChampByName("telephone").setLibelle("T&eacute;l&eacute;phone");
         pc.getChampByName("mail").setLibelle("E-mail");
         pc.getChampByName("nb_tickets").setLibelle("Tickets");
-        pc.getChampByName("nb_payes").setLibelle("Tickets pay&eacute;s");
+        pc.getChampByName("nb_payes").setLibelle("Tickets factur&eacute;s / pay&eacute;s");
         pc.getChampByName("nb_en_attente").setLibelle("R&eacute;servations en attente");
-        pc.getChampByName("nb_places_payees").setLibelle("Places pay&eacute;es");
-        pc.getChampByName("montant_paye").setLibelle("Montant pay&eacute; (Ar)");
+        pc.getChampByName("nb_places_payees").setLibelle("Places vendues");
+        pc.getChampByName("montant_paye").setLibelle("Montant factur&eacute; (Ar)");
         pc.getChampByName("derniere_reservation").setLibelle("Derni&egrave;re r&eacute;servation");
         String lien = (String) session.getValue("lien");
         CinTicketLib[] tickets = CinClient.getTickets(id, null);
-        CinPaiementLib[] paiements = CinClient.getPaiements(id, null);
+        CinFactureVente[] factures = CinClient.getFactures(id, null);
         java.text.DecimalFormat fmt = new java.text.DecimalFormat("#,##0");
 %>
 <div class="content-wrapper">
@@ -72,25 +72,29 @@
                 </div>
             </div>
             <div class="box">
-                <div class="box-header with-border"><h3 class="box-title">Paiements (<%= paiements.length %>)</h3></div>
+                <div class="box-header with-border"><h3 class="box-title">Factures (<%= factures.length %>)</h3></div>
                 <div class="box-body">
                     <table class="table table-bordered table-condensed">
-                        <thead><tr><th>Paiement</th><th>Date</th><th>Film</th><th>Modes</th><th style="text-align: right">Montant (Ar)</th><th>Facture</th></tr></thead>
+                        <thead><tr><th>Facture</th><th>Date</th><th>Ticket</th><th>Film</th><th style="text-align: right">Montant (Ar)</th>
+                            <th style="text-align: right">Pay&eacute; (Ar)</th><th style="text-align: right">Reste (Ar)</th><th>&Eacute;tat</th></tr></thead>
                         <tbody>
-                        <% if (paiements.length == 0) { %><tr><td colspan="6" class="text-muted">Aucun paiement.</td></tr><% } %>
-                        <% for (CinPaiementLib p : paiements) { %>
+                        <% if (factures.length == 0) { %><tr><td colspan="8" class="text-muted">Aucune facture.</td></tr><% } %>
+                        <% for (CinFactureVente f : factures) { %>
                         <tr>
-                            <td><a href="<%= lien %>?but=cinema/paiement/paiement-fiche.jsp&id=<%= p.getId() %>"><%= p.getId() %></a></td>
-                            <td><%= CinDiffusion.formatDate(p.getDaty()) %> <%= p.getHeure_paiement() == null ? "" : p.getHeure_paiement() %></td>
-                            <td><%= html(p.getIdfilmlib()) %></td>
-                            <td><%= html(p.getModes()) %></td>
-                            <td style="text-align: right"><%= fmt.format(p.getMontant()) %></td>
-                            <td><a href="<%= lien %>?but=cinema/facture/facture-fiche.jsp&id=<%= p.getIdfacture() %>"><%= html(p.getNumero_facture()) %></a></td>
+                            <td><a href="<%= lien %>?but=vente/vente-arbiochem-fiche.jsp&id=<%= f.getId() %>"><%= html(f.getNumerofacture() == null ? f.getId() : f.getNumerofacture()) %></a></td>
+                            <td><%= CinDiffusion.formatDate(f.getDaty()) %></td>
+                            <td><a href="<%= lien %>?but=cinema/reservation/reservation-fiche.jsp&id=<%= f.getIdticket() %>"><%= f.getIdticket() %></a></td>
+                            <td><%= html(f.getIdfilmlib()) %></td>
+                            <td style="text-align: right"><%= fmt.format(f.getMontant()) %></td>
+                            <td style="text-align: right"><%= fmt.format(f.getMontantpaye()) %></td>
+                            <td style="text-align: right"><%= fmt.format(f.getMontantreste()) %></td>
+                            <td><%= f.getEtatlib() == null ? "" : f.getEtatlib() %></td>
                         </tr>
                         <% } %>
                         </tbody>
                     </table>
                 </div>
+            </div>
             </div>
         </div>
     </div>

@@ -33,6 +33,8 @@ public class CinTicket extends ClassMere {
     private String heure_reservation;
     private double montant;
     private String remarque;
+    /** Vente (facture de la facturation existante) creee au paiement : voir cinema.paiement.CinFacturation */
+    private String idvente;
 
     public CinTicket() throws Exception {
         this.setNomTable("CIN_TICKET");
@@ -173,7 +175,7 @@ public class CinTicket extends ClassMere {
     @Override
     public void controleAnnule(Connection c) throws Exception {
         int etatBase = CinUtils.entier(c, "select nvl(max(etat), -1) from CIN_TICKET where id = ?", id);
-        if (etatBase == PAYE) throw new Exception("Un ticket pay&eacute; ne peut pas &ecirc;tre annul&eacute;");
+        if (etatBase == PAYE) throw new Exception("Un ticket factur&eacute; ou pay&eacute; ne peut pas &ecirc;tre annul&eacute; ici (annuler sa facture dans la facturation)");
         if (etatBase == ANNULE) throw new Exception("Ce ticket est d&eacute;j&agrave; annul&eacute;");
         super.controleAnnule(c);
     }
@@ -314,5 +316,13 @@ public class CinTicket extends ClassMere {
 
     public void setRemarque(String remarque) {
         this.remarque = remarque;
+    }
+
+    public String getIdvente() {
+        return idvente;
+    }
+
+    public void setIdvente(String idvente) {
+        this.idvente = idvente;
     }
 }

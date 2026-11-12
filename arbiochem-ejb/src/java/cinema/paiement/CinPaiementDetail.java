@@ -21,7 +21,7 @@ public class CinPaiementDetail extends ClassFille {
         this.setNomClasseMere("cinema.paiement.CinPaiement");
         this.setLiaisonMere("idpaiement");
     }
-
+   // les sceance a partir de 8h a 12h seront -50% le prix om mettra le pourcentage dans la base
     @Override
     public void construirePK(Connection c) throws Exception {
         this.preparePk("CINPAD", "GETSEQCINPAIEMENTDETAIL");

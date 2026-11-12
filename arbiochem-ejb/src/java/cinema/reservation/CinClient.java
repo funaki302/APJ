@@ -1,7 +1,7 @@
 package cinema.reservation;
 
 import bean.ClassMAPTable;
-import cinema.paiement.CinPaiementLib;
+import cinema.paiement.CinFactureVente;
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -12,7 +12,7 @@ import utilitaire.UtilDB;
 
 /**
  * Client du cinema en lecture seule (vue CIN_CLIENT_LIB) : un client de la table CLIENT existante qui a au moins
- * un ticket, avec ses totaux. Ses reservations et ses paiements s'obtiennent par getTickets / getPaiements.
+ * un ticket, avec ses totaux. Ses reservations et ses factures s'obtiennent par getTickets / getFactures.
  * La creation et la modification d'un client se font dans les pages client existantes de l'application.
  */
 public class CinClient extends ClassMAPTable {
@@ -87,40 +87,10 @@ public class CinClient extends ClassMAPTable {
     }
 
     /**
-     * Paiements du client, du plus recent au plus ancien, avec les modes utilises et le numero de facture.
+     * Factures (ventes de la facturation existante) des tickets du client, de la plus recente a la plus ancienne.
      */
-    public static CinPaiementLib[] getPaiements(String idClient, Connection c) throws Exception {
-        boolean canClose = false;
-        try {
-            if (c == null) {
-                c = new UtilDB().GetConn();
-                canClose = true;
-            }
-            List<CinPaiementLib> paiements = new ArrayList<CinPaiementLib>();
-            String sql = "select id, idticket, idfilmlib, daty, heure_paiement, montant, modes, idfacture, numero_facture"
-                    + " from CIN_PAIEMENT_LIB where idclient = ? order by daty desc, id desc";
-            try (PreparedStatement ps = c.prepareStatement(sql)) {
-                ps.setString(1, idClient);
-                try (ResultSet rs = ps.executeQuery()) {
-                    while (rs.next()) {
-                        CinPaiementLib p = new CinPaiementLib();
-                        p.setId(rs.getString("id"));
-                        p.setIdticket(rs.getString("idticket"));
-                        p.setIdfilmlib(rs.getString("idfilmlib"));
-                        p.setDaty(rs.getDate("daty"));
-                        p.setHeure_paiement(rs.getString("heure_paiement"));
-                        p.setMontant(rs.getDouble("montant"));
-                        p.setModes(rs.getString("modes"));
-                        p.setIdfacture(rs.getString("idfacture"));
-                        p.setNumero_facture(rs.getString("numero_facture"));
-                        paiements.add(p);
-                    }
-                }
-            }
-            return paiements.toArray(new CinPaiementLib[0]);
-        } finally {
-            if (canClose) c.close();
-        }
+    public static CinFactureVente[] getFactures(String idClient, Connection c) throws Exception {
+        return CinFactureVente.getParClient(idClient, c);
     }
 
     public String getId() {

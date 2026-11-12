@@ -16,14 +16,13 @@
     // { titre, description, lien (null = page pas encore faite), icone, etape }
     String[][] modules = {
         {"Configurations", "Cin&eacute;mas, classes de place (prix, couleur), cat&eacute;gories de film, acteurs et param&egrave;tres.", "cinema/salle/classe-place-liste.jsp", "settings", "1"},
-        {"Salles", "Salles du cin&eacute;ma, plan des places et classes (standard, moyen, premium).", "cinema/salle/salle-liste.jsp", "chair", "2"},
-        {"Films", "Catalogue des films : cat&eacute;gorie, acteur principal, dur&eacute;e, photo.", "cinema/film/film-liste.jsp", "movie", "3"},
+        {"Salles", "Salles du cin&eacute;ma, plan des places et classes (Standard, Confort, VIP).", "cinema/salle/salle-liste.jsp", "chair", "2"},
+        {"Films", "Catalogue des films : cat&eacute;gorie, r&eacute;alisateur, classification, dur&eacute;e, photo.", "cinema/film/film-liste.jsp", "movie", "3"},
         {"Achats", "Achats de films et de mat&eacute;riel : sortie d'argent de la caisse.", "cinema/achat/achat-liste.jsp", "shopping_bag", "4"},
         {"Diffusions", "S&eacute;ances : tel film, dans telle salle, &agrave; telle heure.", "cinema/diffusion/diffusion-calendrier.jsp", "event", "5"},
         {"R&eacute;servations", "R&eacute;server des places sur le plan de salle d'une diffusion.", "cinema/reservation/reservation-liste.jsp", "confirmation_number", "6"},
-        {"Paiements", "Paiement en une fois, plusieurs modes : facture et entr&eacute;e de caisse.", "cinema/paiement/paiement-liste.jsp", "payments", "7"},
-        {"Factures", "Factures cin&eacute;ma g&eacute;n&eacute;r&eacute;es automatiquement au paiement.", "cinema/facture/facture-liste.jsp", "receipt_long", "7"},
-        {"Clients", "R&eacute;servations et paiements de chaque client.", "cinema/client/client-liste.jsp", "group", "8"},
+        {"Factures", "Payer une r&eacute;servation cr&eacute;e sa facture dans la facturation de l'application (encaissement, avoirs, &eacute;critures).", "vente/vente-arbiochem-liste.jsp", "receipt_long", "11"},
+        {"Clients", "R&eacute;servations et factures de chaque client.", "cinema/client/client-liste.jsp", "group", "8"},
         {"Tableau de bord", "Recettes, remplissage des salles, achats et solde de la caisse cin&eacute;ma.", "cinema/tableau/tableau-bord.jsp", "bar_chart", "8"}
     };
 %>
@@ -31,7 +30,7 @@
     <div class="row m-0">
         <div class="col-md-12 nopadding">
             <h1 class="title-service h142pxBold m-0">Cin&eacute;ma</h1>
-            <p class="desc-service h617pxRegular">Achat de films, salles, diffusions, r&eacute;servations et paiements du cin&eacute;ma.</p>
+            <p class="desc-service h617pxRegular">Achat de films, salles, diffusions, r&eacute;servations et facturation du cin&eacute;ma.</p>
         </div>
         <div class="col-md-12 nopadding card-wrapper">
             <% for (String[] m : modules) {

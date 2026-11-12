@@ -18,7 +18,7 @@ Tout est dans ce dossier `TEST/CINEMA/ETAPE-1-9/`. Copier son **contenu** (sauf 
 | `arbiochem-war/src/java/cinema/servlet/` | `CinFilmPhotoServlet` (photos des films, `/cinema/film-photo`) |
 | `arbiochem-war/web/pages/cinema/` | toutes les pages JSP du module (+ fragments `inc/`) |
 | `arbiochem-war/web/WEB-INF/cinema/donnees-demo.sql` | copie de la démo, lue par le bouton « recharger la démonstration » |
-| `data/cinema/` | scripts SQL (`etape-0` à `etape-10`), `donnees-demo.sql`, `donnees-alea-12-11-26.sql` (programme de novembre), `cinema-reset.sql` |
+| `data/cinema/` | scripts SQL (`etape-0` à `etape-11`), `donnees-demo.sql`, `donnees-alea-12-11-26.sql` (programme de novembre), `cinema-reset.sql` |
 | `instruction/CINEMA.md` | documentation technique du module |
 
 ## Installation
@@ -39,6 +39,7 @@ Tout est dans ce dossier `TEST/CINEMA/ETAPE-1-9/`. Copier son **contenu** (sauf 
    | 9 | `etape-8-clients-tableau.sql` | clients du cinéma, tableau de bord |
    | 10 | `etape-9-reinitialisation.sql` | menu « Réinitialiser les données » |
    | 10 bis | `etape-10-films-realisateur.sql` | réalisateur et classification des films (ajouté le 12/11/2026) |
+   | 10 ter | `etape-11-facturation-vente.sql` | facturation des tickets par la facturation existante (VENTE), 12/11/2026 : voir `TEST/FACTURATION-CINEMA/README.md` |
    | 11 | `donnees-demo.sql` (facultatif) | données de démonstration (dates calculées à partir du jour d'exécution) |
 
 3. `ant -f build.xml deploy`.

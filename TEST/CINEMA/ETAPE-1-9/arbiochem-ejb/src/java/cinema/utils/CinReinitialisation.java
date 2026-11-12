@@ -10,7 +10,8 @@ import utilitaire.UtilDB;
 /**
  * Reinitialisation des donnees du cinema (page Cinema > Reinitialiser les donnees).
  * Efface tout sauf la configuration : tickets, paiements, factures, achats, seances, salles et places, films et photos,
- * acteurs, clients crees pour le cinema (CLICIN...), mouvements et reports de la Caisse Cinema
+ * acteurs, clients crees pour le cinema (CLICIN... sans facture), mouvements et reports de la Caisse Cinema.
+ * Les factures des tickets (VENTE, facturation existante) ne sont pas effacees : elles restent dans la facturation
  * (+ mouvements de caisse dont l'origine est une piece du cinema).
  * Garde : cinema, classes de place, categories, parametres, caisses par mode, Caisse Cinema, menus, et tout le reste
  * de l'application. Une seule transaction : si une etape echoue, rien n'est efface.
@@ -18,12 +19,20 @@ import utilitaire.UtilDB;
  */
 public class CinReinitialisation {
 
+    /** Mouvements crees par le cinema (achats, ancien paiement) ou sur la Caisse Cinema, sauf les encaissements de factures */
+    private static final String MVT_CINEMA = "(idorigine like 'CIN%' or idcaisse = 'CAICINEMA')"
+            + " and (idorigine is null or idorigine not in (select id from VENTE))";
+    /** Reports de la Caisse Cinema, gardes si elle porte des encaissements de factures */
+    private static final String REPORT_CINEMA = "idcaisse = 'CAICINEMA' and not exists (select 1 from MOUVEMENTCAISSE m"
+            + " where m.idcaisse = 'CAICINEMA' and m.idorigine in (select id from VENTE))";
+
     /** { libelle, requete de suppression, requete de comptage } dans l'ordre des cles etrangeres */
     private static final String[][] ETAPES = {
-        {"Mouvements de caisse du cin&eacute;ma", "delete from MOUVEMENTCAISSE where idorigine like 'CIN%' or idcaisse = 'CAICINEMA'",
-                "select count(*) from MOUVEMENTCAISSE where idorigine like 'CIN%' or idcaisse = 'CAICINEMA'"},
-        {"Reports de la Caisse Cin&eacute;ma", "delete from REPORTCAISSE where idcaisse = 'CAICINEMA'",
-                "select count(*) from REPORTCAISSE where idcaisse = 'CAICINEMA'"},
+        // les encaissements des factures (IDORIGINE = id d'une VENTE) appartiennent a la facturation existante : jamais effaces
+        {"Mouvements de caisse du cin&eacute;ma (hors encaissements de factures)", "delete from MOUVEMENTCAISSE where " + MVT_CINEMA,
+                "select count(*) from MOUVEMENTCAISSE where " + MVT_CINEMA},
+        {"Reports de la Caisse Cin&eacute;ma", "delete from REPORTCAISSE where " + REPORT_CINEMA,
+                "select count(*) from REPORTCAISSE where " + REPORT_CINEMA},
         {"Lignes de facture", "delete from CIN_FACTURE_DETAIL", "select count(*) from CIN_FACTURE_DETAIL"},
         {"Factures", "delete from CIN_FACTURE", "select count(*) from CIN_FACTURE"},
         {"Lignes de paiement", "delete from CIN_PAIEMENT_DETAIL", "select count(*) from CIN_PAIEMENT_DETAIL"},
@@ -38,8 +47,16 @@ public class CinReinitialisation {
         {"Acteurs", "delete from CIN_ACTEUR", "select count(*) from CIN_ACTEUR"},
         {"Places des salles", "delete from CIN_PLACE", "select count(*) from CIN_PLACE"},
         {"Salles", "delete from CIN_SALLE", "select count(*) from CIN_SALLE"},
-        {"Clients cr&eacute;&eacute;s pour le cin&eacute;ma (CLICIN...)", "delete from CLIENT where id like 'CLICIN%'",
-                "select count(*) from CLIENT where id like 'CLICIN%'"},
+        // les factures (VENTE) sont des pieces comptables de la facturation existante : jamais effacees ici,
+        // et un client CLICIN qui a une facture est garde
+        {"Clients cr&eacute;&eacute;s pour le cin&eacute;ma (CLICIN..., sans facture)",
+                "delete from CLIENT where id like 'CLICIN%' and id not in (select idclient from VENTE where idclient is not null)",
+                "select count(*) from CLIENT where id like 'CLICIN%' and id not in (select idclient from VENTE where idclient is not null)"},
+        {"Comptes comptables des clients du cin&eacute;ma supprim&eacute;s",
+                "delete from COMPTA_COMPTE where id like 'COMCIN%' and compte not in (select compte from CLIENT where compte is not null)",
+                // comptage avant la suppression des clients : comptes des clients qui resteront
+                "select count(*) from COMPTA_COMPTE where id like 'COMCIN%' and compte not in (select compte from CLIENT where compte is not null"
+                        + " and not (id like 'CLICIN%' and id not in (select idclient from VENTE where idclient is not null)))"},
     };
 
     /**

@@ -94,7 +94,7 @@
             pi.getFormu().getChamp("idclient").setPageAppelInsert("client/client-saisie.jsp", "idclient;idclientlibelle", "id;nom");
             if (request.getParameter("idclient") != null) pi.getFormu().getChamp("idclient").setDefaut(request.getParameter("idclient"));
             pi.getFormu().getChamp("remarque").setLibelle("Remarque (facultatif)");
-            for (String cache : new String[]{"iddiffusion", "daty_reservation", "heure_reservation", "montant", "etat"}) {
+            for (String cache : new String[]{"iddiffusion", "daty_reservation", "heure_reservation", "montant", "etat", "idvente"}) {
                 pi.getFormu().getChamp(cache).setVisible(false);
             }
             pi.getFormu().setOrdre(new String[]{"idclient", "remarque"});

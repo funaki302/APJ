@@ -22,6 +22,8 @@ public class CinTicketLib extends CinTicket {
     private int actif;
     private String date_limitelib;
     private int nb_places;
+    private String numerofacture;
+    private int etat_vente;
 
     public CinTicketLib() throws Exception {
         this.setNomTable("CIN_TICKET_LIB");
@@ -137,5 +139,21 @@ public class CinTicketLib extends CinTicket {
 
     public void setNb_places(int nb_places) {
         this.nb_places = nb_places;
+    }
+
+    public String getNumerofacture() {
+        return numerofacture;
+    }
+
+    public void setNumerofacture(String numerofacture) {
+        this.numerofacture = numerofacture;
+    }
+
+    public int getEtat_vente() {
+        return etat_vente;
+    }
+
+    public void setEtat_vente(int etat_vente) {
+        this.etat_vente = etat_vente;
     }
 }

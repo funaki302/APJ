@@ -26,6 +26,7 @@
         pi.getFormu().getChamp("couleur").setDefaut("#F4C430");
         pi.getFormu().getChamp("etat").setLibelle("&Eacute;tat");
         pi.getFormu().getChamp("date_creation").setVisible(false);
+        pi.getFormu().getChamp("idproduit").setVisible(false);   // produit de facturation cree automatiquement
         pi.preparerDataFormu();
 %>
 <div class="content-wrapper">

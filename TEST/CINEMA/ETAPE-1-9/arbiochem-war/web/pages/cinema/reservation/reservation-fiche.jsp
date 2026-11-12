@@ -6,7 +6,7 @@
 <%@page import="cinema.salle.CinClassePlace"%>
 <%@page import="affichage.PageConsulte"%>
 <%@page import="user.UserEJB"%>
-<%-- Fiche d'une reservation (ticket) : infos, places reservees, plan de la seance, paiement, annulation. --%>
+<%-- Fiche d'une reservation (ticket) : infos, places reservees, plan de la seance, facturation (vente existante), annulation. --%>
 <%
     try {
         UserEJB u = (UserEJB) session.getValue("u");
@@ -27,9 +27,10 @@
         pc.getChampByName("nb_places").setLibelle("Nombre de places");
         pc.getChampByName("montant").setLibelle("Montant (Ar)");
         pc.getChampByName("date_limitelib").setLibelle("&Agrave; payer avant le");
+        pc.getChampByName("numerofacture").setLibelle("Facture");
         pc.getChampByName("remarque").setLibelle("Remarque");
         pc.getChampByName("etatlib").setLibelle("Statut");
-        for (String cache : new String[]{"idclient", "iddiffusion", "idfilm", "idsalle", "etat", "etat_diffusion", "actif"}) {
+        for (String cache : new String[]{"idclient", "iddiffusion", "idfilm", "idsalle", "etat", "etat_diffusion", "actif", "idvente", "etat_vente"}) {
             pc.getChampByName(cache).setVisible(false);
         }
         String lien = (String) session.getValue("lien");
@@ -67,11 +68,16 @@
                         <div class="box-footer">
                             <% if (t.getEtat() == CinTicket.RESERVE) { %>
                             <% if (reserveActif) { %>
-                            <a class="btn btn-primary pull-right" href="<%= lien %>?but=cinema/paiement/paiement-saisie.jsp&idticket=<%= id %>">Payer</a>
+                            <a class="btn btn-primary pull-right" href="<%= lien %>?but=cinema/reservation/apres-facturation.jsp&idticket=<%= id %>"
+                               onclick="return confirm('Cr&eacute;er et viser la facture de ce ticket (<%= fmt.format(t.getMontant()) %> Ar) ? Le paiement se fera ensuite sur la fiche de la facture.');">Payer</a>
                             <% } %>
                             <a class="btn btn-secondary pull-left" href="<%= lien %>?but=apresTarif.jsp&id=<%= id %>&acte=annuler&bute=cinema/reservation/reservation-fiche.jsp&classe=cinema.reservation.CinTicket"
                                onclick="return confirm('Annuler cette r&eacute;servation ? Les places seront lib&eacute;r&eacute;es.');">Annuler la r&eacute;servation</a>
                             <% if (!reserveActif) { %><p class="text-danger" style="clear: both; padding-top: 8px;">R&eacute;servation expir&eacute;e : ses places sont de nouveau libres.</p><% } %>
+                            <% } else if (t.getEtat() == CinTicket.PAYE && t.getIdvente() != null) { %>
+                            <span class="<%= t.getActif() == 1 ? "text-success" : "text-danger" %>"><b>Ticket <%= t.getEtatlib() %>.</b></span>
+                            <% if (t.getActif() != 1) { %><p class="text-danger">La facture a &eacute;t&eacute; annul&eacute;e : les places sont de nouveau libres.</p><% } %>
+                            <a class="btn btn-primary pull-right" href="<%= lien %>?but=vente/vente-arbiochem-fiche.jsp&id=<%= t.getIdvente() %>">Voir la facture <%= t.getNumerofacture() == null ? "" : t.getNumerofacture() %></a>
                             <% } else if (t.getEtat() == CinTicket.PAYE) {
                                    String[] paie = new String[2];
                                    java.sql.Connection cx = null;

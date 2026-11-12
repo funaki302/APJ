@@ -1,6 +1,6 @@
 # CINEMA : module de gestion d'un cinéma
 
-Dernière mise à jour : 12/11/2026 (étape 10 : données du programme de novembre, réalisateur et classification des films)
+Dernière mise à jour : 12/11/2026 (étape 11 : la facturation du cinéma passe par la facturation existante, VENTE)
 
 Plan de travail et décisions : `TEST/CINEMA/TO-DO-CINEMA-1.md`. Livraison complète : `TEST/CINEMA/ETAPE-1-9/`.
 
@@ -12,7 +12,9 @@ Le cinéma est un module **séparé** du reste de l'ERP : rien de l'existant n'e
 
 | Existant | Usage |
 |---|---|
-| `CLIENT` | client qui réserve |
+| `VENTE` / `VENTE_DETAILS` (`vente.VenteArbiochem`) | **facture d'un ticket** (étape 11) : créée et visée au clic sur « Payer », payée sur la fiche de la vente |
+| `AS_INGREDIENTS` | un produit « Place <classe> » par classe de place (catégorie service, compte 706, TVA 0) |
+| `CLIENT` | client qui réserve (doit avoir son compte comptable 411..., donné par la fiche client) |
 | `MODEPAIEMENT` | mode de chaque ligne de paiement |
 | `CAISSE` | caisse choisie par ligne (paiement ou achat) |
 | `MOUVEMENTCAISSE` (`caisse.MvtCaisse`) | `DEBIT` = sortie (achat), `CREDIT` = entrée (ticket payé) |
@@ -53,6 +55,7 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 | `etape-8-clients-tableau.sql` | vue `CIN_CLIENT_LIB`, menus Clients et Tableau de bord |
 | `etape-9-reinitialisation.sql` | menu « Réinitialiser les données » (le traitement est dans `CinReinitialisation`) |
 | `etape-10-films-realisateur.sql` | colonnes `CIN_FILM.REALISATEUR` et `CIN_FILM.CLASSIFICATION` (Tous publics, -12, -16, -18), acteur principal facultatif, vue `CIN_FILM_LIB` recréée |
+| `etape-11-facturation-vente.sql` | facturation par `VENTE` : `CIN_CLASSE_PLACE.IDPRODUIT` + produits « Place ... », `CIN_TICKET.IDVENTE`, paramètre `MAGASIN_VENTE`, vues `CIN_TICKET_LIB`, `CIN_PLACE_DIFFUSION`, `CIN_FACTURE_VENTE`, `CIN_RECETTE`, `CIN_CLIENT_LIB`, retrait des menus Paiements / Factures / Caisses par mode |
 | `donnees-alea-12-11-26.sql` | **programme du 16 au 30/11/2026** (photos `TEST/ALEA-12-11-26/PHOTO`, après les étapes 0 à 10, rejouable) : classes Standard 15 000 / Confort 20 000 / VIP 30 000, salles A, B, C (4 rangées × 5), 3 films à 0 Ar, 41 séances |
 | `donnees-demo.sql` | **données de démonstration** (après les étapes 0 à 7, rejouable) : acteurs, films, salles, achats, séances, clients `CLICINDEMO...`, tickets, un ticket payé avec sa facture |
 | `cinema-reset.sql` | supprime tous les objets `CIN_*` / `SEQ_CIN_*` / `GETSEQCIN*`, les menus `MENDYNCINEMA%`, la caisse `CAICINEMA` avec ses reports et mouvements, les mouvements de caisse `IDORIGINE LIKE 'CIN%'`, les clients `CLICIN%` et le mode `MPCINMOB`. Testé le 11/11/2026. |
@@ -72,6 +75,7 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 | 8 | Consultation client, tableau de bord | fait (11/11/2026) |
 | 9 | Recette finale, réinitialisation, livraison | fait (11/11/2026) |
 | 10 | Données du programme de novembre (ALEA du 12/11/2026) | fait (12/11/2026) |
+| 11 | Facturation par la facturation existante (VENTE) | fait (12/11/2026) |
 
 ## 5. Étape 0 : détail
 
@@ -292,6 +296,38 @@ Tests à faire dans WildFly :
 | Films → Saisie | acteur laissé sur « - » → accepté ; classification au choix |
 | Diffusions → Calendrier | semaine du 16/11 : 18 séances, ex. lundi 14:00 salle A et salle B |
 | Réservations | une place VIP d'une séance → 30 000 Ar |
+
+## 6 duodecies. Étape 11 : facturation par la facturation existante (12/11/2026)
+
+Décisions de l'utilisateur : la facture d'un ticket est une **vente** de l'application (liée aux avoirs, aux écritures, à l'encaissement) ; les chaises commandées sont les produits ; **un produit par classe** ; « Payer » **crée et vise** la vente automatiquement ; le ticket est **acquis dès le visa** ; l'ancienne facturation du cinéma est **gardée en base sans menus**.
+
+- **Bouton « Payer »** (fiche de la réservation) → `cinema/reservation/apres-facturation.jsp` → `cinema.paiement.CinFacturation.facturer(idTicket, user)` dans une transaction :
+  1. verrou sur le ticket (`FOR UPDATE`), ticket réservé et non expiré, client avec un compte comptable ;
+  2. vente `vente.VenteArbiochem` (table `VENTE`) : date du jour, échéance = aujourd'hui, désignation « Cinema - <film> <date> <heure> - <salle> », remarque « Ticket cinema <id> », magasin = paramètre `MAGASIN_VENTE` (défaut `MAGA0008`, doit exister dans `MAGASINVENTE`), mode de livraison 2 (récupération) ;
+  3. **une ligne par classe** : produit `CIN_CLASSE_PLACE.IDPRODUIT`, quantité = nombre de chaises, prix = prix des chaises à la réservation, TVA 0, compte 706, désignation « Place VIP - Nuit sur Analamanga 16/11/2026 20:00 - Salle B - D1, D2 » (une vente refuse deux lignes du même produit, d'où le regroupement) ;
+  4. `createObject` puis **`validerObject`** de la vente : numéro de facture, écriture comptable, prévision d'encaissement, imputation automatique des avoirs et des avances du client, contrôle du seuil d'impayés du client (code existant, non modifié) ;
+  5. `CIN_TICKET.ETAT = 11`, `CIN_TICKET.IDVENTE` = la vente ; puis ouverture de `vente/vente-arbiochem-fiche.jsp` : Payer / Encaisser, avoirs, impression, comme toute facture.
+- **Produits** : `CinClassePlace.synchroniserProduit` crée le produit « Place <classe> » (`AS_INGREDIENTS`, id `IG` + id de la classe, catégorie `CATINGSERVICE` donc aucun engagement de stock, unité `UNT00005`) à la création d'une classe et met à jour libellé, prix et actif à chaque modification.
+- **Statut du ticket** (`CIN_TICKET_LIB.ETATLIB`) : Réservé / Expiré / Annulé / **Facturé** / **Facturé et payé** (reste à payer nul dans `VENTE_CPL`) / **Facture annulée** (la vente annulée dans la facturation rend le ticket inactif : ses chaises redeviennent libres) / Payé (ancienne facturation du cinéma). Sur le plan de salle, une chaise facturée est « vendue ».
+- **Annulation** : un ticket facturé ne s'annule pas côté cinéma ; on annule sa facture dans la facturation.
+- **Fiche client** : section « Factures » (vue `CIN_FACTURE_VENTE` : montant, payé, reste, état de la vente). **Tableau de bord** : recettes = tickets facturés (vue `CIN_RECETTE`, qui garde aussi les anciens paiements), mouvements de caisse = ceux du cinéma + les encaissements des factures des tickets.
+- **Réinitialisation** et `cinema-reset.sql` : les ventes, leurs encaissements (mouvements dont `IDORIGINE` est une vente, même sur la Caisse Cinéma), les clients qui ont une facture et les produits utilisés par une facture ne sont **jamais effacés**.
+- **Démo** : clients de démo créés avec un compte comptable (`COMPTA_COMPTE` `COMCINDEMO..`, comptes `411999000..`) ; plus de ticket payé d'avance : 4 tickets à payer.
+- Menus retirés : Paiements, Factures, Configurations > Caisses par mode (pages et tables conservées). Carte « Factures » de l'accueil → `vente/vente-arbiochem-liste.jsp`.
+
+Tests faits (Java, ROLLBACK) : facturation d'un ticket 2 VIP + 1 Confort + 1 Standard (95 000 Ar, 3 lignes, écriture, pas de stock), statut, plan, fiche client, tableau de bord, double facturation, annulation refusée, chaise vendue non réservable, facture annulée → chaises libres, ticket expiré, magasin inconnu, client sans compte, produit créé / synchronisé avec la classe, réinitialisation avec une facture encaissée sur la Caisse Cinéma, rechargement de la démo.
+
+Tests à faire dans WildFly :
+
+| Écran | À vérifier |
+|---|---|
+| Réservations → Nouvelle réservation | client créé par la fiche client (il a un compte 411...), 2 chaises VIP + 1 Standard |
+| Fiche réservation → Payer | confirmation, puis la fiche de la vente s'ouvre : 2 lignes (Place VIP × 2, Place Standard × 1), état visé, numéro de facture |
+| Fiche vente → Payer | encaissement comme une vente normale ; la fiche réservation affiche « Facturé et payé » |
+| Fiche vente → Générer avoir | avoir de la facture du ticket |
+| Plan de la séance | chaises vendues barrées |
+| Vente annulée | la réservation affiche « Facture annulée » et les chaises sont libres |
+| Clients cinéma → fiche | section Factures |
 
 ## 6 decies. Limites connues et perspectives
 

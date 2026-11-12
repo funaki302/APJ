@@ -8,6 +8,8 @@ import java.sql.Date;
 /**
  * Classe de place (table CIN_CLASSE_PLACE) : standard, moyen, premium...
  * Le prix d'une place vient de sa classe ; la couleur sert au plan de salle.
+ * Chaque classe a son produit "Place <classe>" dans AS_INGREDIENTS (IDPRODUIT), utilise par la facturation
+ * existante (VENTE) : il est cree a la creation de la classe et suit son libelle et son prix (synchroniserProduit).
  */
 public class CinClassePlace extends ClassMAPTable {
 
@@ -18,6 +20,12 @@ public class CinClassePlace extends ClassMAPTable {
     private String couleur;
     private Date date_creation;
     private int etat = CinUtils.ETAT_ACTIF;
+    private String idproduit;
+
+    /** Produit d'une classe : categorie service (pas de stock), compte 706, unite, TVA 0 */
+    public static final String PRODUIT_CATEGORIE = "CATINGSERVICE";
+    public static final String PRODUIT_COMPTE = "706";
+    public static final String PRODUIT_UNITE = "UNT00005";
 
     public CinClassePlace() {
         this.setNomTable("CIN_CLASSE_PLACE");
@@ -54,7 +62,66 @@ public class CinClassePlace extends ClassMAPTable {
     @Override
     public int updateToTableWithHisto(String refUser, Connection c) throws Exception {
         verifier(c);
-        return super.updateToTableWithHisto(refUser, c);
+        int n = super.updateToTableWithHisto(refUser, c);
+        idproduit = synchroniserProduit(id, c);
+        return n;
+    }
+
+    @Override
+    public ClassMAPTable createObject(String refUser, Connection c) throws Exception {
+        ClassMAPTable retour = super.createObject(refUser, c);
+        idproduit = synchroniserProduit(id, c);
+        return retour;
+    }
+
+    /**
+     * Cree ou met a jour le produit "Place <classe>" de la classe (id produit = "IG" + id de la classe)
+     * et l'inscrit dans CIN_CLASSE_PLACE.IDPRODUIT. Renvoie l'id du produit.
+     */
+    public static String synchroniserProduit(String idClasse, Connection c) throws Exception {
+        String val;
+        double prix;
+        int etat;
+        try (java.sql.PreparedStatement ps = c.prepareStatement("select val, prix, etat from CIN_CLASSE_PLACE where id = ?")) {
+            ps.setString(1, idClasse);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) throw new Exception("Classe de place " + idClasse + " introuvable");
+                val = rs.getString(1);
+                prix = rs.getDouble(2);
+                etat = rs.getInt(3);
+            }
+        }
+        String idProduit = "IG" + idClasse;
+        String libelle = "Place " + val;
+        if (CinUtils.entier(c, "select count(*) from AS_INGREDIENTS where id = ?", idProduit) == 0) {
+            try (java.sql.PreparedStatement ps = c.prepareStatement("insert into AS_INGREDIENTS (id, libelle, libellevente, unite, pu, pv, tva,"
+                    + " compte_vente, categorieingredient, isvente, isachat, actif, compose, daty) values (?, ?, ?, ?, 0, ?, 0, ?, ?, 1, 0, ?, 0, sysdate)")) {
+                ps.setString(1, idProduit);
+                ps.setString(2, libelle);
+                ps.setString(3, libelle);
+                ps.setString(4, PRODUIT_UNITE);
+                ps.setDouble(5, prix);
+                ps.setString(6, PRODUIT_COMPTE);
+                ps.setString(7, PRODUIT_CATEGORIE);
+                ps.setInt(8, etat == CinUtils.ETAT_ACTIF ? 1 : 0);
+                ps.executeUpdate();
+            }
+        } else {
+            try (java.sql.PreparedStatement ps = c.prepareStatement("update AS_INGREDIENTS set libelle = ?, libellevente = ?, pv = ?, actif = ? where id = ?")) {
+                ps.setString(1, libelle);
+                ps.setString(2, libelle);
+                ps.setDouble(3, prix);
+                ps.setInt(4, etat == CinUtils.ETAT_ACTIF ? 1 : 0);
+                ps.setString(5, idProduit);
+                ps.executeUpdate();
+            }
+        }
+        try (java.sql.PreparedStatement ps = c.prepareStatement("update CIN_CLASSE_PLACE set idproduit = ? where id = ?")) {
+            ps.setString(1, idProduit);
+            ps.setString(2, idClasse);
+            ps.executeUpdate();
+        }
+        return idProduit;
     }
 
     private void verifier(Connection c) throws Exception {
@@ -101,6 +168,14 @@ public class CinClassePlace extends ClassMAPTable {
 
     public String getId() {
         return id;
+    }
+
+    public String getIdproduit() {
+        return idproduit;
+    }
+
+    public void setIdproduit(String idproduit) {
+        this.idproduit = idproduit;
     }
 
     public void setId(String id) {

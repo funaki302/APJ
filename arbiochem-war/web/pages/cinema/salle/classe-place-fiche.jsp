@@ -16,6 +16,7 @@
         pc.getChampByName("date_creation").setLibelle("Date de cr&eacute;ation");
         pc.getChampByName("etatlib").setLibelle("&Eacute;tat");
         pc.getChampByName("etat").setVisible(false);
+        pc.getChampByName("idproduit").setLibelle("Produit de facturation");
         String lien = (String) session.getValue("lien");
 %>
 <div class="content-wrapper">

@@ -254,6 +254,14 @@ Problèmes découverts et corrigés pendant l'étape :
 - [x] Données `data/cinema/donnees-alea-12-11-26.sql` : salles A, B, C (4 × 5), 3 films à 0 Ar, 41 séances du 16 au 30/11/2026 ; chargées dans la base locale le 12/11/2026 ; option dans « Réinitialiser les données ».
 - [ ] **À tester par toi dans WildFly** : `TEST/ALEA-12-11-26/README.md`.
 
+### Étape 11 : facturation par la facturation existante (VENTE), 12/11/2026
+
+- [x] Décisions : un produit par classe ; « Payer » crée et vise la vente ; ticket acquis au visa ; ancienne facturation gardée sans menus.
+- [x] `data/cinema/etape-11-facturation-vente.sql` : produits « Place ... », `CIN_CLASSE_PLACE.IDPRODUIT`, `CIN_TICKET.IDVENTE`, paramètre `MAGASIN_VENTE`, vues, menus retirés.
+- [x] `CinFacturation` (création + visa de la vente), `CinClassePlace.synchroniserProduit`, `CinFactureVente`, statut des tickets, fiche réservation / client, tableau de bord, réinitialisation (factures jamais effacées), démo (clients avec compte comptable).
+- [x] Tests Java (ROLLBACK) : facturation, statuts, plan, annulation de la facture, réinitialisation avec facture encaissée, démo.
+- [ ] **À tester par toi dans WildFly** : `TEST/FACTURATION-CINEMA/README.md`.
+
 ---
 
 ## 6. Correspondance pages ↔ maquettes

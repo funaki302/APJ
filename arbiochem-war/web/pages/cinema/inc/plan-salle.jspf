@@ -8,7 +8,7 @@
         boolean planEditable;                     true : places / rangees / colonnes cliquables (salle-plan.jsp, reservation-saisie.jsp)
     Optionnel : request.setAttribute("cinTicketCourant", idTicket) met en valeur les places de ce ticket.
     Chaque place : <div class="cin-place" data-id data-classe data-etat [data-statut]>, couleur de sa classe,
-    hachuree si hors service, barree (X) si reservee ou payee pour la seance.
+    hachuree si hors service, barree (X) si reservee ou vendue (facturee) pour la seance.
 --%>
 <style>
     .cin-plan { overflow-x: auto; padding: 12px 0; }
@@ -76,7 +76,7 @@
                     cinStatut = pd.getStatut();
                     if (cinHs) cinClasses += " cin-seance";
                     if (cinema.reservation.CinPlaceDiffusion.RESERVEE.equals(cinStatut)) { cinClasses += " cin-prise"; cinTitre += " - réservée"; }
-                    if (cinema.reservation.CinPlaceDiffusion.PAYEE.equals(cinStatut)) { cinClasses += " cin-prise cin-payee"; cinTitre += " - payée"; }
+                    if (cinema.reservation.CinPlaceDiffusion.PAYEE.equals(cinStatut)) { cinClasses += " cin-prise cin-payee"; cinTitre += " - vendue"; }
                     if (cinTicketCourant != null && cinTicketCourant.equals(pd.getIdticket())) cinClasses += " cin-mien";
                 }
         %>
@@ -96,7 +96,7 @@
         <div><span class="cin-pastille cin-place cin-hs" style="width: 16px; height: 16px;"></span>Hors service (<%= cinNbHs %>)</div>
         <% if (cinSeance) { %>
         <div><span class="cin-pastille" style="text-align: center; line-height: 14px; font-weight: 700;">&#10005;</span>R&eacute;serv&eacute;e (<%= cinNbReservees %>)</div>
-        <div><span class="cin-pastille" style="text-align: center; line-height: 14px; font-weight: 700; opacity: .4;">&#10005;</span>Pay&eacute;e (<%= cinNbPayees %>)</div>
+        <div><span class="cin-pastille" style="text-align: center; line-height: 14px; font-weight: 700; opacity: .4;">&#10005;</span>Vendue (<%= cinNbPayees %>)</div>
         <% } %>
     </div>
 </div>
