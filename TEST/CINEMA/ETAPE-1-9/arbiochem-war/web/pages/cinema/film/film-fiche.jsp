@@ -13,7 +13,9 @@
         pc.getChampByName("id").setLibelle("ID");
         pc.getChampByName("titre").setLibelle("Titre");
         pc.getChampByName("idcategorielib").setLibelle("Cat&eacute;gorie");
+        pc.getChampByName("realisateur").setLibelle("R&eacute;alisateur");
         pc.getChampByName("idacteurlib").setLibelle("Acteur principal");
+        pc.getChampByName("classification").setLibelle("Classification");
         pc.getChampByName("dureelib").setLibelle("Dur&eacute;e");
         pc.getChampByName("pa").setLibelle("Prix d'achat (Ar)");
         pc.getChampByName("description").setLibelle("Description");

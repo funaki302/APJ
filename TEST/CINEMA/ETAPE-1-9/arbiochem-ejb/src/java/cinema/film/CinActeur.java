@@ -59,6 +59,33 @@ public class CinActeur extends ClassMAPTable {
         }
     }
 
+    /**
+     * Acteurs tries par nom (liste deroulante du film, ou l'acteur est facultatif).
+     */
+    public static CinActeur[] getActeurs(Connection c) throws Exception {
+        boolean canClose = false;
+        try {
+            if (c == null) {
+                c = new utilitaire.UtilDB().GetConn();
+                canClose = true;
+            }
+            java.util.List<CinActeur> acteurs = new java.util.ArrayList<CinActeur>();
+            try (java.sql.PreparedStatement ps = c.prepareStatement("select id, nom, nom_acteur from CIN_ACTEUR order by upper(nom)");
+                 java.sql.ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    CinActeur a = new CinActeur();
+                    a.setId(rs.getString(1));
+                    a.nom = rs.getString(2);
+                    a.setNom_acteur(rs.getString(3));
+                    acteurs.add(a);
+                }
+            }
+            return acteurs.toArray(new CinActeur[0]);
+        } finally {
+            if (canClose) c.close();
+        }
+    }
+
     public String getId() {
         return id;
     }

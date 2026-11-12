@@ -246,6 +246,14 @@ Problèmes découverts et corrigés pendant l'étape :
 - [x] **Livraison unique** dans `TEST/CINEMA/ETAPE-1-9/` (tout est dans ce dossier) : tous les fichiers du module (Java, servlet, JSP, scripts `data/cinema/`, démo `WEB-INF/cinema/`, `instruction/CINEMA.md`) + `README.md` global.
 - [ ] **À tester par toi dans WildFly** : `TEST/CINEMA/ETAPE-1-9/README.md` (installation complète et parcours de test).
 
+### Étape 10 : programme de novembre (ALEA du 12/11/2026, photos `TEST/ALEA-12-11-26/PHOTO`)
+
+- [x] Colonnes ajoutées à `CIN_FILM` : `REALISATEUR`, `CLASSIFICATION` (Tous publics, -12, -16, -18) ; acteur principal devenu facultatif (`data/cinema/etape-10-films-realisateur.sql`).
+- [x] Pages films (saisie, modification, fiche, liste) et `CinFilm` adaptés ; « ENTRÉE » ajoutée au plan de salle.
+- [x] Classes Standard 15 000 / Confort 20 000 / VIP 30 000 (Moyen / Premium renommées) ; démo adaptée.
+- [x] Données `data/cinema/donnees-alea-12-11-26.sql` : salles A, B, C (4 × 5), 3 films à 0 Ar, 41 séances du 16 au 30/11/2026 ; chargées dans la base locale le 12/11/2026 ; option dans « Réinitialiser les données ».
+- [ ] **À tester par toi dans WildFly** : `TEST/ALEA-12-11-26/README.md`.
+
 ---
 
 ## 6. Correspondance pages ↔ maquettes

@@ -17,16 +17,27 @@
         PageInsert pi = new PageInsert(new CinFilm(), request, u);
         pi.setLien((String) session.getValue("lien"));
 
-        Liste[] liste = new Liste[3];
+        Liste[] liste = new Liste[4];
         liste[0] = new Liste("idcategorie", new CinCategorieFilm(), "val", "id");
         liste[0].setApresW(" and etat = 1");
-        liste[1] = new Liste("idacteur", new CinActeur(), "nom", "id");
+        // acteur principal facultatif : choix vide en tete de liste
+        CinActeur[] tousActeurs = CinActeur.getActeurs(null);
+        bean.ClassMAPTable[] acteurs = new bean.ClassMAPTable[tousActeurs.length + 1];
+        CinActeur aucunActeur = new CinActeur();
+        aucunActeur.setId("");
+        aucunActeur.setNom(" - ");
+        acteurs[0] = aucunActeur;
+        System.arraycopy(tousActeurs, 0, acteurs, 1, tousActeurs.length);
+        liste[1] = new Liste("idacteur", acteurs, "nom", "id");
         liste[2] = new Liste("etat", new String[]{"Actif", "Inactif"}, new String[]{"1", "0"});
+        liste[3] = new Liste("classification", new String[]{" - ", "Tous publics", "-12", "-16", "-18"}, new String[]{"", "Tous publics", "-12", "-16", "-18"});
         pi.getFormu().changerEnChamp(liste);
 
         pi.getFormu().getChamp("titre").setLibelle("Titre");
         pi.getFormu().getChamp("idcategorie").setLibelle("Cat&eacute;gorie");
-        pi.getFormu().getChamp("idacteur").setLibelle("Acteur principal");
+        pi.getFormu().getChamp("realisateur").setLibelle("R&eacute;alisateur");
+        pi.getFormu().getChamp("idacteur").setLibelle("Acteur principal (facultatif)");
+        pi.getFormu().getChamp("classification").setLibelle("Classification");
         pi.getFormu().getChamp("duree").setLibelle("Dur&eacute;e (minutes)");
         pi.getFormu().getChamp("duree").setType("number");
         pi.getFormu().getChamp("duree").setAutre("min='1' max='600'");
@@ -42,7 +53,7 @@
 <div class="content-wrapper">
     <h1><%= titre %></h1>
     <p class="text-muted">Apr&egrave;s l'enregistrement, la fiche du film s'ouvre : vous pourrez y ajouter la photo (affiche).
-        Si l'acteur n'existe pas encore, cr&eacute;ez-le d'abord dans
+        L'acteur principal est facultatif ; pour en choisir un qui n'existe pas encore, cr&eacute;ez-le d'abord dans
         <a href="module.jsp?but=cinema/film/acteur-saisie.jsp">Configurations &gt; Acteurs</a>.</p>
     <form action="<%= pi.getLien() %>?but=apresTarif.jsp" method="post" name="<%= nomtable %>" id="<%= nomtable %>">
         <%

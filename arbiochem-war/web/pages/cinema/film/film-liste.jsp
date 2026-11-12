@@ -10,10 +10,10 @@
 <%
     try {
         CinFilmLib t = new CinFilmLib();
-        String listeCrt[] = {"id", "titre", "idcategorie", "idacteur", "duree", "etat"};
+        String listeCrt[] = {"id", "titre", "idcategorie", "realisateur", "classification", "duree", "etat"};
         String listeInt[] = {"duree"};
-        String libEntete[] = {"id", "titre", "idacteurlib", "idcategorielib", "dureelib", "pa", "etatlib"};
-        String libEnteteAffiche[] = {"ID", "Titre", "Acteur principal", "Cat&eacute;gorie", "Dur&eacute;e", "Prix d'achat (Ar)", "&Eacute;tat"};
+        String libEntete[] = {"id", "titre", "realisateur", "idcategorielib", "classification", "dureelib", "pa", "etatlib"};
+        String libEnteteAffiche[] = {"ID", "Titre", "R&eacute;alisateur", "Cat&eacute;gorie", "Classification", "Dur&eacute;e", "Prix d'achat (Ar)", "&Eacute;tat"};
 
         PageRecherche pr = new PageRecherche(t, request, listeCrt, listeInt, 3, libEntete, libEntete.length);
         pr.setTitre("Liste des films");
@@ -23,13 +23,14 @@
 
         Liste[] liste = new Liste[3];
         liste[0] = new Liste("idcategorie", new CinCategorieFilm(), "val", "id");
-        liste[1] = new Liste("idacteur", new CinActeur(), "nom", "id");
+        liste[1] = new Liste("classification", new String[]{"Tous", "Tous publics", "-12", "-16", "-18"}, new String[]{"", "Tous publics", "-12", "-16", "-18"});
         liste[2] = new Liste("etat", new String[]{"Tous", "Actif", "Inactif"}, new String[]{"", "1", "0"});
         pr.getFormu().changerEnChamp(liste);
         pr.getFormu().getChamp("id").setLibelle("ID");
         pr.getFormu().getChamp("titre").setLibelle("Titre");
         pr.getFormu().getChamp("idcategorie").setLibelle("Cat&eacute;gorie");
-        pr.getFormu().getChamp("idacteur").setLibelle("Acteur");
+        pr.getFormu().getChamp("realisateur").setLibelle("R&eacute;alisateur");
+        pr.getFormu().getChamp("classification").setLibelle("Classification");
         pr.getFormu().getChamp("duree1").setLibelle("Dur&eacute;e min (minutes)");
         pr.getFormu().getChamp("duree2").setLibelle("Dur&eacute;e max (minutes)");
         pr.getFormu().getChamp("etat").setLibelle("&Eacute;tat");

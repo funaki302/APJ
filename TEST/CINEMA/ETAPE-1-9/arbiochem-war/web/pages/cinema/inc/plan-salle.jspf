@@ -14,6 +14,8 @@
     .cin-plan { overflow-x: auto; padding: 12px 0; }
     .cin-ecran { margin: 0 auto 18px; width: 70%; text-align: center; font-size: 12px; letter-spacing: 4px; color: #666;
                  border-top: 4px solid #9B9EA0; border-radius: 50% 50% 0 0 / 12px 12px 0 0; padding-top: 4px; }
+    .cin-entree { margin: 16px auto 0; width: 30%; text-align: center; font-size: 12px; letter-spacing: 4px; color: #666;
+                  border-bottom: 3px dashed #9B9EA0; padding-bottom: 4px; }
     .cin-grille { display: grid; gap: 6px; justify-content: center; align-items: center; }
     .cin-place { position: relative; width: 34px; height: 30px; border-radius: 6px 6px 3px 3px; border: 1px solid rgba(0,0,0,.25);
                  font-size: 10px; line-height: 28px; text-align: center; color: #1C1F21; user-select: none; }
@@ -84,6 +86,7 @@
              title="<%= p.getNumero() %> - <%= cinTitre %>"><%= p.getNumero() %></div>
         <% } %>
     </div>
+    <div class="cin-entree">ENTR&Eacute;E</div>
     <div class="cin-legende">
         <% for (cinema.salle.CinClassePlace cl : planClasses) {
                int cinNb = cinNbParClasse.containsKey(cl.getId()) ? cinNbParClasse.get(cl.getId()) : 0; %>

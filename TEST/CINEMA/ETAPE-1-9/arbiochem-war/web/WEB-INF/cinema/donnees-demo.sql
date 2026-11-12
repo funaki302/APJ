@@ -5,12 +5,12 @@
 --
 -- Contenu :
 --   4 acteurs, 4 films (sans photo : a ajouter depuis la fiche du film)
---   2 salles : "Salle 1" (6 x 10, rangees A-C Standard, D-E Moyen, F Premium, F10 hors service)
---              "Salle 2" (4 x 8, A-B Standard, C Moyen, D Premium)
+--   2 salles : "Salle 1" (6 x 10, rangees A-C Standard, D-E Confort, F VIP, F10 hors service)
+--              "Salle 2" (4 x 8, A-B Standard, C Confort, D VIP)
 --   2 achats : un vise (films, avec sa sortie de caisse sur la Caisse Cinema), un cree (materiel, a viser)
 --   7 seances : hier (terminee), dans 20 min (reservations closes), demain 18:00 et 20:30, apres-demain, J+3, une annulee
 --   3 clients et 6 tickets : 3 reserves, 1 annule, 1 expire (seance dans 20 min),
---   1 paye (espece 10 000 + Mobile money 20 000, avec ses 2 entrees de caisse et sa facture FCaaaa-D0001)
+--   1 paye (espece 10 000 + Mobile money pour le reste, avec ses 2 entrees de caisse et sa facture FCaaaa-D0001)
 -- =====================================================================
 
 SET DEFINE OFF;
@@ -59,7 +59,7 @@ DECLARE
     BEGIN
         FOR r IN 1 .. p_rangees LOOP
             SELECT ID INTO v_classe FROM CIN_CLASSE_PLACE
-            WHERE VAL = CASE WHEN r >= p_premium THEN 'Premium' WHEN r >= p_moyen THEN 'Moyen' ELSE 'Standard' END;
+            WHERE VAL = CASE WHEN r >= p_premium THEN 'VIP' WHEN r >= p_moyen THEN 'Confort' ELSE 'Standard' END;
             FOR col IN 1 .. p_colonnes LOOP
                 INSERT INTO CIN_PLACE (ID, IDSALLE, IDCLASSE, NUMERO, RANGEE, COLONNE, ETAT)
                 VALUES ('CINPLADEMO' || p_code || CHR(64 + r) || LPAD(col, 2, '0'), p_salle, v_classe, CHR(64 + r) || col, r, col, 1);
@@ -125,21 +125,22 @@ DECLARE
     END;
 BEGIN
     ticket('CINTKTDEMO01', 'CLICINDEMO01', 'CINDIFDEMO03', '1', 'C05,C06', 1, 1);       -- demain 18:00 : 2 Standard
-    ticket('CINTKTDEMO02', 'CLICINDEMO02', 'CINDIFDEMO03', '1', 'F04,F05,F06', 1, 0);   -- demain 18:00 : 3 Premium
+    ticket('CINTKTDEMO02', 'CLICINDEMO02', 'CINDIFDEMO03', '1', 'F04,F05,F06', 1, 0);   -- demain 18:00 : 3 VIP
     ticket('CINTKTDEMO03', 'CLICINDEMO03', 'CINDIFDEMO03', '1', 'D01', 0, 2);           -- annule : D1 reste libre
-    ticket('CINTKTDEMO04', 'CLICINDEMO03', 'CINDIFDEMO05', '2', 'C04,C05', 1, 0);       -- apres-demain 15:00 : 2 Moyen
+    ticket('CINTKTDEMO04', 'CLICINDEMO03', 'CINDIFDEMO05', '2', 'C04,C05', 1, 0);       -- apres-demain 15:00 : 2 Confort
     ticket('CINTKTDEMO05', 'CLICINDEMO01', 'CINDIFDEMO02', '2', 'A01,A02', 1, 0);       -- seance dans 20 min : expire
-    ticket('CINTKTDEMO06', 'CLICINDEMO02', 'CINDIFDEMO04', '1', 'E01,E02', 11, 1);      -- demain 20:30 : 2 Moyen, paye
+    ticket('CINTKTDEMO06', 'CLICINDEMO02', 'CINDIFDEMO04', '1', 'E01,E02', 11, 1);      -- demain 20:30 : 2 Confort, paye
 END;
 /
 
--- ---------- paiement du ticket CINTKTDEMO06 (30 000 Ar) : espece 10 000 + Mobile money 20 000 ----------
+-- ---------- paiement du ticket CINTKTDEMO06 : espece 10 000 + Mobile money pour le reste ----------
 INSERT INTO CIN_PAIEMENT (ID, IDTICKET, IDCLIENT, DATY, HEURE, MONTANT, IDFACTURE, ETAT)
-VALUES ('CINPAIDEMO01', 'CINTKTDEMO06', 'CLICINDEMO02', TRUNC(SYSDATE), '11:00:00', 30000, NULL, 11);
+VALUES ('CINPAIDEMO01', 'CINTKTDEMO06', 'CLICINDEMO02', TRUNC(SYSDATE), '11:00:00', (SELECT MONTANT FROM CIN_TICKET WHERE ID = 'CINTKTDEMO06'), NULL, 11);
 INSERT INTO CIN_PAIEMENT_DETAIL (ID, IDPAIEMENT, IDMODEPAIEMENT, IDCAISSE, MONTANT, IDMVTCAISSE, ETAT)
 VALUES ('CINPADDEMO01', 'CINPAIDEMO01', '0002', 'CAICINEMA', 10000, 'MTCCINDEMO02', 11);
 INSERT INTO CIN_PAIEMENT_DETAIL (ID, IDPAIEMENT, IDMODEPAIEMENT, IDCAISSE, MONTANT, IDMVTCAISSE, ETAT)
-VALUES ('CINPADDEMO02', 'CINPAIDEMO01', 'MPCINMOB', (SELECT IDCAISSE FROM CIN_MODE_CAISSE WHERE IDMODEPAIEMENT = 'MPCINMOB'), 20000, 'MTCCINDEMO03', 11);
+VALUES ('CINPADDEMO02', 'CINPAIDEMO01', 'MPCINMOB', (SELECT IDCAISSE FROM CIN_MODE_CAISSE WHERE IDMODEPAIEMENT = 'MPCINMOB'),
+        (SELECT MONTANT - 10000 FROM CIN_TICKET WHERE ID = 'CINTKTDEMO06'), 'MTCCINDEMO03', 11);
 INSERT INTO MOUVEMENTCAISSE (ID, DESIGNATION, IDCAISSE, DATY, ETAT, IDORIGINE, IDDEVISE, IDTIERS, IDMODEPAIEMENT, DEBIT, CREDIT, TAUX,
                              DATYCOMPTABILISATION, HEURE)
 VALUES ('MTCCINDEMO02', 'Ticket cinema CINTKTDEMO06 - Razafy Nirina', 'CAICINEMA', TRUNC(SYSDATE), 11, 'CINPAIDEMO01',
@@ -147,9 +148,10 @@ VALUES ('MTCCINDEMO02', 'Ticket cinema CINTKTDEMO06 - Razafy Nirina', 'CAICINEMA
 INSERT INTO MOUVEMENTCAISSE (ID, DESIGNATION, IDCAISSE, DATY, ETAT, IDORIGINE, IDDEVISE, IDTIERS, IDMODEPAIEMENT, DEBIT, CREDIT, TAUX,
                              DATYCOMPTABILISATION, HEURE)
 VALUES ('MTCCINDEMO03', 'Ticket cinema CINTKTDEMO06 - Razafy Nirina', (SELECT IDCAISSE FROM CIN_MODE_CAISSE WHERE IDMODEPAIEMENT = 'MPCINMOB'),
-        TRUNC(SYSDATE), 11, 'CINPAIDEMO01', 'AR', 'CLICINDEMO02', 'MPCINMOB', 0, 20000, 1, TRUNC(SYSDATE), '11:00:00');
+        TRUNC(SYSDATE), 11, 'CINPAIDEMO01', 'AR', 'CLICINDEMO02', 'MPCINMOB', 0, (SELECT MONTANT - 10000 FROM CIN_TICKET WHERE ID = 'CINTKTDEMO06'), 1,
+        TRUNC(SYSDATE), '11:00:00');
 INSERT INTO CIN_FACTURE (ID, NUMERO, IDCLIENT, IDTICKET, IDPAIEMENT, DATY, MONTANT, ETAT)
-VALUES ('CINFACDEMO01', 'FC' || TO_CHAR(SYSDATE, 'YYYY') || '-D0001', 'CLICINDEMO02', 'CINTKTDEMO06', 'CINPAIDEMO01', TRUNC(SYSDATE), 30000, 11);
+VALUES ('CINFACDEMO01', 'FC' || TO_CHAR(SYSDATE, 'YYYY') || '-D0001', 'CLICINDEMO02', 'CINTKTDEMO06', 'CINPAIDEMO01', TRUNC(SYSDATE), (SELECT MONTANT FROM CIN_TICKET WHERE ID = 'CINTKTDEMO06'), 11);
 INSERT INTO CIN_FACTURE_DETAIL (ID, IDFACTURE, IDPLACE, DESIGNATION, PRIX)
 SELECT 'CINFADDEMO0' || ROWNUM, 'CINFACDEMO01', x.IDPLACE, x.DESIGNATION, x.PRIX FROM (
     SELECT td.IDPLACE, d.IDFILMLIB || ' - ' || d.IDSALLELIB || ' - ' || TO_CHAR(d.DATY, 'DD/MM/YYYY') || ' ' || d.HEURE

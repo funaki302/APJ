@@ -88,7 +88,7 @@ public class CinReinitialisation {
             c.setAutoCommit(false);
             res = reinitialiser(c);
             if (!CinUtils.estVide(scriptDemo)) {
-                res.put("Instructions de la d&eacute;monstration ex&eacute;cut&eacute;es", CinScriptSql.executer(scriptDemo, c));
+                res.put("Instructions du script de donn&eacute;es ex&eacute;cut&eacute;es", CinScriptSql.executer(scriptDemo, c));
             }
             c.commit();
         } catch (Exception e) {

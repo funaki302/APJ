@@ -1,7 +1,7 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%@page import="cinema.utils.CinReinitialisation"%>
 <%@page import="java.util.Map"%>
-<%-- Reinitialisation des donnees du cinema (tout sauf la configuration), avec option de rechargement de la demonstration --%>
+<%-- Reinitialisation des donnees du cinema (tout sauf la configuration), puis au choix : rien, programme de novembre, demonstration --%>
 <%
     try {
         String lien = (String) session.getValue("lien");
@@ -32,9 +32,11 @@
                     </table>
                     <form action="<%= lien %>?but=cinema/parametre/apres-reinitialisation.jsp" method="post" onsubmit="return cinConfirmer();">
                         <div class="form-group">
-                            <label><input type="radio" name="action" value="reinitialiser" checked> R&eacute;initialiser seulement (le cin&eacute;ma repart vide)</label><br>
-                            <label><input type="radio" name="action" value="demo"> R&eacute;initialiser puis <b>recharger les donn&eacute;es de d&eacute;monstration</b>
-                                (films, salles, s&eacute;ances de demain, tickets, un ticket pay&eacute;...)</label>
+                            <label><input type="radio" name="action" value="reinitialiser"> R&eacute;initialiser seulement (le cin&eacute;ma repart vide)</label><br>
+                            <label><input type="radio" name="action" value="alea" checked> R&eacute;initialiser puis charger le <b>programme du 16 au 30/11/2026</b>
+                                (salles A, B, C ; 3 films ; 41 s&eacute;ances ; classes Standard / Confort / VIP)</label><br>
+                            <label><input type="radio" name="action" value="demo"> R&eacute;initialiser puis charger la <b>d&eacute;monstration de test</b>
+                                (s&eacute;ances de demain, tickets r&eacute;serv&eacute;s / expir&eacute; / pay&eacute;...)</label>
                         </div>
                         <div class="form-group">
                             <label for="cinConfirmation">Pour confirmer, tapez <b>REINITIALISER</b></label>

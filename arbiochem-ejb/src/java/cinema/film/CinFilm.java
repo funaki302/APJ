@@ -6,17 +6,22 @@ import java.sql.Connection;
 import java.sql.Date;
 
 /**
- * Film (table CIN_FILM) : titre, categorie, acteur principal, duree en minutes, prix d'achat (pa).
+ * Film (table CIN_FILM) : titre, categorie, realisateur, acteur principal (facultatif), classification
+ * (Tous publics, -12, -16, -18), duree en minutes, prix d'achat (pa).
  * La photo est dans CIN_FILM_PHOTO (voir CinFilmPhoto).
  */
 public class CinFilm extends ClassMAPTable {
 
     public static final int DUREE_MAX = 600;
+    /** Classifications acceptees (contrainte CK_CIN_FILM_CLASSIFICATION) */
+    public static final String[] CLASSIFICATIONS = {"Tous publics", "-12", "-16", "-18"};
 
     private String id;
     private String titre;
     private String idcategorie;
+    private String realisateur;
     private String idacteur;
+    private String classification;
     private int duree;
     private double pa;
     private String description;
@@ -78,9 +83,17 @@ public class CinFilm extends ClassMAPTable {
         if (CinUtils.entier(c, "select count(*) from CIN_CATEGORIE_FILM where id = ? and etat = 1", idcategorie) == 0) {
             throw new Exception("La cat&eacute;gorie choisie n'existe pas ou est inactive");
         }
-        if (CinUtils.estVide(idacteur)) throw new Exception("L'acteur principal est obligatoire");
-        if (CinUtils.entier(c, "select count(*) from CIN_ACTEUR where id = ?", idacteur) == 0) {
+        // acteur principal facultatif (les donnees du programme ne donnent que le realisateur)
+        if (CinUtils.estVide(idacteur)) {
+            idacteur = null;
+        } else if (CinUtils.entier(c, "select count(*) from CIN_ACTEUR where id = ?", idacteur) == 0) {
             throw new Exception("L'acteur choisi n'existe pas");
+        }
+        if (realisateur != null && realisateur.length() > 255) throw new Exception("Le nom du r&eacute;alisateur d&eacute;passe 255 caract&egrave;res");
+        if (CinUtils.estVide(classification)) {
+            classification = null;
+        } else if (!java.util.Arrays.asList(CLASSIFICATIONS).contains(classification)) {
+            throw new Exception("Classification inconnue : Tous publics, -12, -16 ou -18");
         }
         if (duree < 1 || duree > DUREE_MAX) throw new Exception("La dur&eacute;e doit &ecirc;tre entre 1 et " + DUREE_MAX + " minutes");
         if (pa < 0) throw new Exception("Le prix d'achat ne peut pas &ecirc;tre n&eacute;gatif");
@@ -141,6 +154,22 @@ public class CinFilm extends ClassMAPTable {
 
     public void setIdcategorie(String idcategorie) {
         this.idcategorie = idcategorie;
+    }
+
+    public String getRealisateur() {
+        return realisateur;
+    }
+
+    public void setRealisateur(String realisateur) {
+        this.realisateur = realisateur;
+    }
+
+    public String getClassification() {
+        return classification;
+    }
+
+    public void setClassification(String classification) {
+        this.classification = classification;
     }
 
     public String getIdacteur() {

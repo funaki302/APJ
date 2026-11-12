@@ -2,18 +2,21 @@
 <%@page import="cinema.utils.CinReinitialisation"%>
 <%@page import="java.util.Map"%>
 <%--
-    Execute la reinitialisation (une seule transaction) ; action=demo recharge ensuite les donnees de demonstration
-    depuis /WEB-INF/cinema/donnees-demo.sql (copie de data/cinema/donnees-demo.sql).
+    Execute la reinitialisation (une seule transaction) puis, selon action, charge un jeu de donnees dans la meme transaction :
+    alea = programme de novembre (/WEB-INF/cinema/donnees-alea-12-11-26.sql, copie de data/cinema/donnees-alea-12-11-26.sql),
+    demo = demonstration de test (/WEB-INF/cinema/donnees-demo.sql, copie de data/cinema/donnees-demo.sql).
 --%>
 <%
     try {
         String lien = (String) session.getValue("lien");
         if (!"REINITIALISER".equals(request.getParameter("confirmation"))) throw new Exception("Confirmation manquante : tapez REINITIALISER");
-        boolean demo = "demo".equals(request.getParameter("action"));
+        String action = request.getParameter("action");
+        String fichier = "alea".equals(action) ? "donnees-alea-12-11-26.sql" : "demo".equals(action) ? "donnees-demo.sql" : null;
+        boolean demo = fichier != null;
         String script = null;
         if (demo) {
-            java.io.InputStream in = application.getResourceAsStream("/WEB-INF/cinema/donnees-demo.sql");
-            if (in == null) throw new Exception("Fichier de d&eacute;monstration introuvable (WEB-INF/cinema/donnees-demo.sql)");
+            java.io.InputStream in = application.getResourceAsStream("/WEB-INF/cinema/" + fichier);
+            if (in == null) throw new Exception("Fichier de donn&eacute;es introuvable (WEB-INF/cinema/" + fichier + ")");
             try {
                 java.io.ByteArrayOutputStream buf = new java.io.ByteArrayOutputStream();
                 byte[] b = new byte[8192];
@@ -32,7 +35,8 @@
         <div class="col-md-8 col-md-offset-2">
             <div class="box box-success">
                 <div class="box-body">
-                    <p><%= demo ? "Les donn&eacute;es ont &eacute;t&eacute; effac&eacute;es puis la d&eacute;monstration a &eacute;t&eacute; recharg&eacute;e (dates calcul&eacute;es &agrave; partir d'aujourd'hui)."
+                    <p><%= "alea".equals(action) ? "Les donn&eacute;es ont &eacute;t&eacute; effac&eacute;es puis le programme du 16 au 30/11/2026 a &eacute;t&eacute; charg&eacute;."
+                                : demo ? "Les donn&eacute;es ont &eacute;t&eacute; effac&eacute;es puis la d&eacute;monstration a &eacute;t&eacute; recharg&eacute;e (dates calcul&eacute;es &agrave; partir d'aujourd'hui)."
                                 : "Les donn&eacute;es du cin&eacute;ma ont &eacute;t&eacute; effac&eacute;es. La configuration est conserv&eacute;e." %></p>
                     <table class="table table-bordered table-condensed">
                         <thead><tr><th>&Eacute;tape</th><th style="text-align: right">Lignes</th></tr></thead>

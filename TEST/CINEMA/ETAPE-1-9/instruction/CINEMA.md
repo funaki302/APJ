@@ -1,6 +1,6 @@
 # CINEMA : module de gestion d'un cinéma
 
-Dernière mise à jour : 11/11/2026 (étape 9 : module terminé)
+Dernière mise à jour : 12/11/2026 (étape 10 : données du programme de novembre, réalisateur et classification des films)
 
 Plan de travail et décisions : `TEST/CINEMA/TO-DO-CINEMA-1.md`. Livraison complète : `TEST/CINEMA/ETAPE-1-9/`.
 
@@ -52,6 +52,8 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 | `etape-7-paiements.sql` | tables `CIN_MODE_CAISSE`, `CIN_PAIEMENT`, `CIN_PAIEMENT_DETAIL`, `CIN_FACTURE`, `CIN_FACTURE_DETAIL`, vues `*_LIB`, mode Mobile money `MPCINMOB`, menus Paiements / Factures / Caisses par mode |
 | `etape-8-clients-tableau.sql` | vue `CIN_CLIENT_LIB`, menus Clients et Tableau de bord |
 | `etape-9-reinitialisation.sql` | menu « Réinitialiser les données » (le traitement est dans `CinReinitialisation`) |
+| `etape-10-films-realisateur.sql` | colonnes `CIN_FILM.REALISATEUR` et `CIN_FILM.CLASSIFICATION` (Tous publics, -12, -16, -18), acteur principal facultatif, vue `CIN_FILM_LIB` recréée |
+| `donnees-alea-12-11-26.sql` | **programme du 16 au 30/11/2026** (photos `TEST/ALEA-12-11-26/PHOTO`, après les étapes 0 à 10, rejouable) : classes Standard 15 000 / Confort 20 000 / VIP 30 000, salles A, B, C (4 rangées × 5), 3 films à 0 Ar, 41 séances |
 | `donnees-demo.sql` | **données de démonstration** (après les étapes 0 à 7, rejouable) : acteurs, films, salles, achats, séances, clients `CLICINDEMO...`, tickets, un ticket payé avec sa facture |
 | `cinema-reset.sql` | supprime tous les objets `CIN_*` / `SEQ_CIN_*` / `GETSEQCIN*`, les menus `MENDYNCINEMA%`, la caisse `CAICINEMA` avec ses reports et mouvements, les mouvements de caisse `IDORIGINE LIKE 'CIN%'`, les clients `CLICIN%` et le mode `MPCINMOB`. Testé le 11/11/2026. |
 
@@ -69,6 +71,7 @@ Les scripts commencent par `SET DEFINE OFF;` car les libellés contiennent des e
 | 7 | Paiement → facture + entrée de caisse | fait (11/11/2026) |
 | 8 | Consultation client, tableau de bord | fait (11/11/2026) |
 | 9 | Recette finale, réinitialisation, livraison | fait (11/11/2026) |
+| 10 | Données du programme de novembre (ALEA du 12/11/2026) | fait (12/11/2026) |
 
 ## 5. Étape 0 : détail
 
@@ -122,7 +125,7 @@ Tests à faire dans WildFly :
 
 | Écran | À vérifier |
 |---|---|
-| Films → Saisie | titre, catégorie, acteur, 125 min, PA → la fiche s'ouvre avec « Pas de photo » |
+| Films → Saisie | titre, catégorie, réalisateur, acteur (facultatif), classification, 125 min, PA → la fiche s'ouvre avec « Pas de photo » |
 | Fiche → Ajouter une photo | choisir un JPG ou PNG → l'affiche apparaît ; « Changer la photo » la remplace ; « Supprimer la photo » remet « Pas de photo » |
 | Fiche → photo refusée | un PDF ou un fichier renommé en .jpg → message « Format non accepté » ; une image de plus de 2 Mo → « L'image dépasse 2 Mo » |
 | Films → Liste | tableau standard : titre, acteur, catégorie, « 2 h 05 », prix d'achat, état ; clic sur l'ID → fiche ; filtres et pagination |
@@ -267,6 +270,28 @@ Tests à faire dans WildFly (après `donnees-demo.sql`) :
 - **Recharger la démonstration** : même page, option « Réinitialiser puis recharger la démonstration ». Le script lu est `arbiochem-war/web/WEB-INF/cinema/donnees-demo.sql`, exécuté par `cinema.utils.CinScriptSql` (lignes `--`, `SET`, `COMMIT` ignorées ; `;` en fin de ligne ; blocs PL/SQL terminés par `/`). **Ce fichier doit rester identique à `data/cinema/donnees-demo.sql`** (le war ne contient pas le dossier `data/`).
 - **Ce que le module ajoute dans des tables existantes** (rien n'est modifié ni supprimé dans l'existant) : `MENUDYNAMIQUE` (menus `MENDYNCINEMA...`), `USERMENU` (`UMCINEMA01`), `CAISSE` (`CAICINEMA`), `MODEPAIEMENT` (`MPCINMOB`), `CLIENT` (clients de démo `CLICIN...`), `MOUVEMENTCAISSE` et `REPORTCAISSE` (mouvements du cinéma, `IDORIGINE LIKE 'CIN%'` ou caisse `CAICINEMA`). `cinema-reset.sql` retire tout cela.
 - **Recette finale** : scénario complet achat → séance → réservation → paiement multi-mode → facture → caisse → tableau de bord, et cas limites, testés en Java (voir `TEST/CINEMA/ETAPE-1-9/README.md` pour le parcours dans l'application).
+
+## 6 undecies. Étape 10 : programme de novembre (12/11/2026)
+
+Données fournies en photos (`TEST/ALEA-12-11-26/PHOTO`) : plan des salles A, B, C, liste des films, programme du 16 au 30/11/2026.
+
+- **Colonnes ajoutées** (`etape-10-films-realisateur.sql`) : `CIN_FILM.REALISATEUR` (texte libre) et `CIN_FILM.CLASSIFICATION` (liste fermée `CinFilm.CLASSIFICATIONS` + contrainte `CK_CIN_FILM_CLASSIFICATION`). `CIN_FILM.IDACTEUR` devient **facultatif** (les données ne donnent que le réalisateur) ; s'il est rempli, l'acteur doit exister. Pages films : réalisateur et classification en saisie, modification, fiche, liste (colonnes et filtres) ; liste des acteurs avec un choix vide (`CinActeur.getActeurs`).
+- **Classes de place** : Standard 15 000 Ar (rangées A-B), Confort 20 000 Ar (rangée C), VIP 30 000 Ar (rangée D). Les anciennes classes Moyen / Premium sont renommées par le script (mêmes id, donc les places existantes suivent). `etape-1-referentiels.sql` crée directement ces trois classes pour une installation neuve ; la démo utilise les nouveaux noms et calcule les montants du ticket payé à partir des prix.
+- **Plan de salle** : « ENTRÉE » affichée sous la grille (l'écran est devant, l'entrée au fond, comme sur le schéma).
+- **Films** : prix d'achat **0 Ar** (non fourni), catégories Aventure / Thriller (créée si absente) / Animation.
+- **Séances** : le programme hebdomadaire est appliqué à chaque jour du 16 au 30/11/2026 → 41 séances (Les Gardiens du Baobab 14 en salle A, Nuit sur Analamanga 15 en salle B, Le Petit Lemurien 12 en salle C).
+- **Chargement** : Cinéma → Réinitialiser les données → option « programme du 16 au 30/11/2026 » (choix par défaut), qui exécute `WEB-INF/cinema/donnees-alea-12-11-26.sql` (**identique à `data/cinema/donnees-alea-12-11-26.sql`**). L'option « démonstration de test » reste disponible.
+
+Tests à faire dans WildFly :
+
+| Écran | À vérifier |
+|---|---|
+| Configurations → Classes de place | Standard 15 000, Confort 20 000, VIP 30 000 |
+| Salles → Liste / fiche | Salle A, B, C : 20 places, A-B Standard, C Confort, D VIP, « ÉCRAN » devant et « ENTRÉE » au fond |
+| Films → Liste | 3 films, colonnes Réalisateur et Classification, prix 0 ; filtre Classification = -12 → Nuit sur Analamanga |
+| Films → Saisie | acteur laissé sur « - » → accepté ; classification au choix |
+| Diffusions → Calendrier | semaine du 16/11 : 18 séances, ex. lundi 14:00 salle A et salle B |
+| Réservations | une place VIP d'une séance → 30 000 Ar |
 
 ## 6 decies. Limites connues et perspectives
 

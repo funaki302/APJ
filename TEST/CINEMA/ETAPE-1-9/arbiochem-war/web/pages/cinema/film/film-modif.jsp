@@ -15,17 +15,28 @@
         pu.setLien((String) session.getValue("lien"));
         pu.setTitre("Modification du film");
 
-        Liste[] liste = new Liste[3];
+        Liste[] liste = new Liste[4];
         liste[0] = new Liste("idcategorie", new CinCategorieFilm(), "val", "id");
         liste[0].setApresW(" and etat = 1");
-        liste[1] = new Liste("idacteur", new CinActeur(), "nom", "id");
+        // acteur principal facultatif : choix vide en tete de liste
+        CinActeur[] tousActeurs = CinActeur.getActeurs(null);
+        bean.ClassMAPTable[] acteurs = new bean.ClassMAPTable[tousActeurs.length + 1];
+        CinActeur aucunActeur = new CinActeur();
+        aucunActeur.setId("");
+        aucunActeur.setNom(" - ");
+        acteurs[0] = aucunActeur;
+        System.arraycopy(tousActeurs, 0, acteurs, 1, tousActeurs.length);
+        liste[1] = new Liste("idacteur", acteurs, "nom", "id");
         liste[2] = new Liste("etat", new String[]{"Actif", "Inactif"}, new String[]{"1", "0"});
+        liste[3] = new Liste("classification", new String[]{" - ", "Tous publics", "-12", "-16", "-18"}, new String[]{"", "Tous publics", "-12", "-16", "-18"});
         pu.getFormu().changerEnChamp(liste);
 
         pu.getFormu().getChamp("id").setAutre("readonly");
         pu.getFormu().getChamp("titre").setLibelle("Titre");
         pu.getFormu().getChamp("idcategorie").setLibelle("Cat&eacute;gorie");
-        pu.getFormu().getChamp("idacteur").setLibelle("Acteur principal");
+        pu.getFormu().getChamp("realisateur").setLibelle("R&eacute;alisateur");
+        pu.getFormu().getChamp("idacteur").setLibelle("Acteur principal (facultatif)");
+        pu.getFormu().getChamp("classification").setLibelle("Classification");
         pu.getFormu().getChamp("duree").setLibelle("Dur&eacute;e (minutes)");
         pu.getFormu().getChamp("duree").setType("number");
         pu.getFormu().getChamp("duree").setAutre("min='1' max='600'");

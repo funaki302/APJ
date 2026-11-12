@@ -1,0 +1,116 @@
+-- =====================================================================
+-- CINEMA - Donnees du programme de novembre 2026 (sujet ALEA du 12/11/2026, photos TEST/ALEA-12-11-26/PHOTO)
+-- A executer APRES les scripts etape-0 a etape-10, de preference apres une reinitialisation
+-- (Cinema > Reinitialiser les donnees, option "programme de novembre" : elle reinitialise puis execute ce script).
+-- Rejouable : efface d'abord ses propres donnees (identifiants ...ALEA...). Donnees sans accents.
+--
+--   Classes : Standard 15 000 Ar (rangees A-B), Confort 20 000 Ar (rangee C), VIP 30 000 Ar (rangee D)
+--             (les anciennes classes Moyen / Premium sont renommees Confort / VIP)
+--   Salles  : Salle A, Salle B, Salle C : 4 rangees x 5 places (ecran devant, entree au fond)
+--   Films   : prix d'achat 0 Ar (non fourni), pas d'acteur (non fourni : realisateur seulement)
+--   Seances : du lundi 16/11/2026 au lundi 30/11/2026, selon le programme hebdomadaire (41 seances)
+-- =====================================================================
+
+SET DEFINE OFF;
+
+-- ---------- classes de place ----------
+UPDATE CIN_CLASSE_PLACE SET VAL = 'Confort' WHERE VAL = 'Moyen' AND NOT EXISTS (SELECT 1 FROM CIN_CLASSE_PLACE WHERE VAL = 'Confort');
+UPDATE CIN_CLASSE_PLACE SET VAL = 'VIP' WHERE VAL = 'Premium' AND NOT EXISTS (SELECT 1 FROM CIN_CLASSE_PLACE WHERE VAL = 'VIP');
+INSERT INTO CIN_CLASSE_PLACE (ID, VAL, DESCE, PRIX, COULEUR, DATE_CREATION, ETAT)
+SELECT 'CINCLA' || LPAD(GETSEQCINCLASSEPLACE, 6, '0'), 'Standard', NULL, 15000, '#D9D6CF', SYSDATE, 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM CIN_CLASSE_PLACE WHERE VAL = 'Standard');
+INSERT INTO CIN_CLASSE_PLACE (ID, VAL, DESCE, PRIX, COULEUR, DATE_CREATION, ETAT)
+SELECT 'CINCLA' || LPAD(GETSEQCINCLASSEPLACE, 6, '0'), 'Confort', NULL, 20000, '#8FD3B8', SYSDATE, 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM CIN_CLASSE_PLACE WHERE VAL = 'Confort');
+INSERT INTO CIN_CLASSE_PLACE (ID, VAL, DESCE, PRIX, COULEUR, DATE_CREATION, ETAT)
+SELECT 'CINCLA' || LPAD(GETSEQCINCLASSEPLACE, 6, '0'), 'VIP', NULL, 30000, '#F2C27D', SYSDATE, 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM CIN_CLASSE_PLACE WHERE VAL = 'VIP');
+UPDATE CIN_CLASSE_PLACE SET PRIX = 15000, COULEUR = '#D9D6CF', DESCE = 'Rangees A et B', ETAT = 1 WHERE VAL = 'Standard';
+UPDATE CIN_CLASSE_PLACE SET PRIX = 20000, COULEUR = '#8FD3B8', DESCE = 'Rangee C', ETAT = 1 WHERE VAL = 'Confort';
+UPDATE CIN_CLASSE_PLACE SET PRIX = 30000, COULEUR = '#F2C27D', DESCE = 'Rangee D', ETAT = 1 WHERE VAL = 'VIP';
+
+-- ---------- categorie manquante ----------
+INSERT INTO CIN_CATEGORIE_FILM (ID, VAL, DESCE, DATE_CREATION, ETAT)
+SELECT 'CINCAT' || LPAD(GETSEQCINCATEGORIEFILM, 6, '0'), 'Thriller', NULL, SYSDATE, 1 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM CIN_CATEGORIE_FILM WHERE VAL = 'Thriller');
+
+-- ---------- nettoyage des donnees de ce script (rejouable) ----------
+DELETE FROM CIN_DIFFUSION WHERE ID LIKE 'CINDIFALEA%';
+DELETE FROM CIN_FILM WHERE ID LIKE 'CINFILALEA%';
+DELETE FROM CIN_SALLE WHERE ID LIKE 'CINSALALEA%';
+
+-- ---------- salles A, B, C : 4 rangees x 5 places ----------
+INSERT INTO CIN_SALLE (ID, IDCINEMA, NOM, NB_RANGEES, NB_COLONNES, CAPACITE, DATE_CREATION, ETAT)
+VALUES ('CINSALALEA1', (SELECT MIN(ID) FROM CIN_CINEMA), 'Salle A', 4, 5, 20, SYSDATE, 1);
+INSERT INTO CIN_SALLE (ID, IDCINEMA, NOM, NB_RANGEES, NB_COLONNES, CAPACITE, DATE_CREATION, ETAT)
+VALUES ('CINSALALEA2', (SELECT MIN(ID) FROM CIN_CINEMA), 'Salle B', 4, 5, 20, SYSDATE, 1);
+INSERT INTO CIN_SALLE (ID, IDCINEMA, NOM, NB_RANGEES, NB_COLONNES, CAPACITE, DATE_CREATION, ETAT)
+VALUES ('CINSALALEA3', (SELECT MIN(ID) FROM CIN_CINEMA), 'Salle C', 4, 5, 20, SYSDATE, 1);
+
+-- rangees A-B Standard, C Confort, D VIP
+DECLARE
+    v_classe VARCHAR2(50);
+BEGIN
+    FOR s IN 1 .. 3 LOOP
+        FOR r IN 1 .. 4 LOOP
+            SELECT ID INTO v_classe FROM CIN_CLASSE_PLACE
+            WHERE VAL = CASE WHEN r = 4 THEN 'VIP' WHEN r = 3 THEN 'Confort' ELSE 'Standard' END;
+            FOR col IN 1 .. 5 LOOP
+                INSERT INTO CIN_PLACE (ID, IDSALLE, IDCLASSE, NUMERO, RANGEE, COLONNE, ETAT)
+                VALUES ('CINPLAALEA' || s || CHR(64 + r) || col, 'CINSALALEA' || s, v_classe, CHR(64 + r) || col, r, col, 1);
+            END LOOP;
+        END LOOP;
+    END LOOP;
+END;
+/
+
+-- ---------- films (prix d'achat 0 Ar, realisateur, classification) ----------
+INSERT INTO CIN_FILM (ID, TITRE, IDCATEGORIE, REALISATEUR, IDACTEUR, CLASSIFICATION, DUREE, PA, DESCRIPTION, DATE_CREATION, ETAT)
+VALUES ('CINFILALEA1', 'Les Gardiens du Baobab', (SELECT ID FROM CIN_CATEGORIE_FILM WHERE VAL = 'Aventure'),
+        'Hery Rakotomalala', NULL, 'Tous publics', 115, 0, NULL, SYSDATE, 1);
+INSERT INTO CIN_FILM (ID, TITRE, IDCATEGORIE, REALISATEUR, IDACTEUR, CLASSIFICATION, DUREE, PA, DESCRIPTION, DATE_CREATION, ETAT)
+VALUES ('CINFILALEA2', 'Nuit sur Analamanga', (SELECT ID FROM CIN_CATEGORIE_FILM WHERE VAL = 'Thriller'),
+        'Fanja Andriamanana', NULL, '-12', 105, 0, NULL, SYSDATE, 1);
+INSERT INTO CIN_FILM (ID, TITRE, IDCATEGORIE, REALISATEUR, IDACTEUR, CLASSIFICATION, DUREE, PA, DESCRIPTION, DATE_CREATION, ETAT)
+VALUES ('CINFILALEA3', 'Le Petit Lemurien', (SELECT ID FROM CIN_CATEGORIE_FILM WHERE VAL = 'Animation'),
+        'Tojo Randrianarisoa', NULL, 'Tous publics', 90, 0, NULL, SYSDATE, 1);
+
+-- ---------- seances du 16/11/2026 au 30/11/2026 (programme hebdomadaire) ----------
+DECLARE
+    v_n NUMBER := 0;
+BEGIN
+    FOR j IN 0 .. TO_DATE('30/11/2026', 'DD/MM/YYYY') - TO_DATE('16/11/2026', 'DD/MM/YYYY') LOOP
+        FOR p IN (
+            SELECT 'CINFILALEA1' AS FILM, 'MON' AS JOUR, '14:00' AS HEURE, 'CINSALALEA1' AS SALLE FROM DUAL UNION ALL
+            SELECT 'CINFILALEA1', 'MON', '20:00', 'CINSALALEA1' FROM DUAL UNION ALL
+            SELECT 'CINFILALEA1', 'THU', '14:00', 'CINSALALEA1' FROM DUAL UNION ALL
+            SELECT 'CINFILALEA1', 'THU', '17:00', 'CINSALALEA1' FROM DUAL UNION ALL
+            SELECT 'CINFILALEA1', 'THU', '20:00', 'CINSALALEA1' FROM DUAL UNION ALL
+            SELECT 'CINFILALEA1', 'SUN', '15:00', 'CINSALALEA1' FROM DUAL UNION ALL
+            SELECT 'CINFILALEA2', 'MON', '14:00', 'CINSALALEA2' FROM DUAL UNION ALL
+            SELECT 'CINFILALEA2', 'MON', '17:00', 'CINSALALEA2' FROM DUAL UNION ALL
+            SELECT 'CINFILALEA2', 'MON', '20:00', 'CINSALALEA2' FROM DUAL UNION ALL
+            SELECT 'CINFILALEA2', 'TUE', '18:00', 'CINSALALEA2' FROM DUAL UNION ALL
+            SELECT 'CINFILALEA2', 'FRI', '17:00', 'CINSALALEA2' FROM DUAL UNION ALL
+            SELECT 'CINFILALEA2', 'FRI', '20:00', 'CINSALALEA2' FROM DUAL UNION ALL
+            SELECT 'CINFILALEA3', 'TUE', '14:00', 'CINSALALEA3' FROM DUAL UNION ALL
+            SELECT 'CINFILALEA3', 'WED', '14:00', 'CINSALALEA3' FROM DUAL UNION ALL
+            SELECT 'CINFILALEA3', 'WED', '17:00', 'CINSALALEA3' FROM DUAL UNION ALL
+            SELECT 'CINFILALEA3', 'SAT', '10:00', 'CINSALALEA3' FROM DUAL UNION ALL
+            SELECT 'CINFILALEA3', 'SAT', '14:00', 'CINSALALEA3' FROM DUAL UNION ALL
+            SELECT 'CINFILALEA3', 'SAT', '17:00', 'CINSALALEA3' FROM DUAL
+        ) LOOP
+            IF TO_CHAR(TO_DATE('16/11/2026', 'DD/MM/YYYY') + j, 'DY', 'NLS_DATE_LANGUAGE=ENGLISH') = p.JOUR THEN
+                v_n := v_n + 1;
+                INSERT INTO CIN_DIFFUSION (ID, IDFILM, IDSALLE, DATY, HEURE, DATE_CREATION, ETAT)
+                VALUES ('CINDIFALEA' || LPAD(v_n, 3, '0'), p.FILM, p.SALLE, TO_DATE('16/11/2026', 'DD/MM/YYYY') + j, p.HEURE, SYSDATE, 1);
+            END IF;
+        END LOOP;
+    END LOOP;
+END;
+/
+
+COMMIT;
+
+-- Controle
+-- SELECT IDFILMLIB, IDSALLELIB, COUNT(*) FROM CIN_DIFFUSION_LIB WHERE ID LIKE 'CINDIFALEA%' GROUP BY IDFILMLIB, IDSALLELIB;
